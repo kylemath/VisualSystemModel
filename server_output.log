@@ -1,0 +1,131 @@
+======================================================================
+Bio-Inspired Temporal Neural Network Server
+======================================================================
+
+Complete Retinal System:
+  ✓ Layer 0: Photoreceptors (Rods + RGB Cones, ~22K neurons)
+  ✓ Layer 1: Bipolar cells (ON/OFF, P/M pathways, ~3.7K neurons)
+  ✓         + Horizontal cells (lateral inhibition, ~100 neurons)
+  ✓ Layer 2: Ganglion cells (P/M/ipRGC, optic nerve, ~388 neurons)
+  ✓         + Amacrine cells (motion/direction, ~100 neurons)
+
+Features:
+  ✓ Foveal structure with eccentricity-based pooling
+  ✓ Tripartite synapses (horizontal & amacrine modulation)
+  ✓ Continuous temporal dynamics with spiking
+  ✓ Webcam input (real or simulated)
+  ✓ Lightweight 2D visualization
+
+Total: ~26,000 retinal neurons
+Output: Optic nerve ready for LGN integration
+
+Starting server at http://localhost:5000
+======================================================================
+
+ * Serving Flask app 'temporal_server'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 163-862-773
+127.0.0.1 - - [31/Oct/2025 13:06:05] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:05] "[31m[1mGET /api/visualize/2d/network_overview HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:05] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:05] "[31m[1mGET /api/visualize/2d/network_overview HTTP/1.1[0m" 400 -
+ * Detected change in '/Users/kylemathewson/Golem/ganglion_cells.py', reloading
+======================================================================
+Bio-Inspired Temporal Neural Network Server
+======================================================================
+
+Complete Retinal System:
+  ✓ Layer 0: Photoreceptors (Rods + RGB Cones, ~22K neurons)
+  ✓ Layer 1: Bipolar cells (ON/OFF, P/M pathways, ~3.7K neurons)
+  ✓         + Horizontal cells (lateral inhibition, ~100 neurons)
+  ✓ Layer 2: Ganglion cells (P/M/ipRGC, optic nerve, ~388 neurons)
+  ✓         + Amacrine cells (motion/direction, ~100 neurons)
+
+Features:
+  ✓ Foveal structure with eccentricity-based pooling
+  ✓ Tripartite synapses (horizontal & amacrine modulation)
+  ✓ Continuous temporal dynamics with spiking
+  ✓ Webcam input (real or simulated)
+  ✓ Lightweight 2D visualization
+
+Total: ~26,000 retinal neurons
+Output: Optic nerve ready for LGN integration
+
+Starting server at http://localhost:5000
+======================================================================
+
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 163-862-773
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/visualize/2d/network_overview HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/visualize/2d/network_overview HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:25] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:26] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/visualize/2d/network_overview HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:27] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:28] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+127.0.0.1 - - [31/Oct/2025 13:06:29] "[31m[1mGET /api/state/current HTTP/1.1[0m" 400 -
+/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

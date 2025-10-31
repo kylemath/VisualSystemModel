@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Inspired Neural Network - Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .intro {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            border-left: 5px solid #667eea;
+        }
+
+        .intro h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .doc-card {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        .doc-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .doc-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .doc-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .doc-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .doc-date {
+            color: #999;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .doc-summary {
+            color: #666;
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+
+        .doc-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .meta-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-type {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge-level {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .badge-status {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .doc-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .doc-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .footer {
+            background: #f5f5f5;
+            padding: 2rem;
+            text-align: center;
+            color: #666;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .quick-links {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            border: 2px solid #667eea;
+        }
+
+        .quick-links h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .quick-link-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: block;
+        }
+
+        .quick-link-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .timeline {
+            margin: 2rem 0;
+            padding-left: 2rem;
+            border-left: 3px solid #667eea;
+        }
+
+        .timeline-item {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.3rem;
+            top: 0.5rem;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .doc-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            body {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Bio-Inspired Neural Network</h1>
+            <p>Complete Documentation Index</p>
+        </div>
+
+        <div class="content">
+            <div class="intro">
+                <h2>📚 Documentation Overview</h2>
+                <p>
+                    Welcome to the documentation for the Bio-Inspired Neural Network System! 
+                    This project implements a biologically realistic neural network with temporal dynamics, 
+                    foveal retinal structure, and real-time processing capabilities. The documentation is 
+                    organized chronologically from initial concepts to the complete temporal system.
+                </p>
+            </div>
+
+            <div class="quick-links">
+                <h3>🚀 Quick Access</h3>
+                <div class="quick-links-grid">
+                    <a href="START_HERE.md" class="quick-link-btn">🎯 Start Here</a>
+                    <a href="../README.md" class="quick-link-btn">📖 Main README</a>
+                    <a href="TEMPORAL_SYSTEM.md" class="quick-link-btn">⚡ Temporal System</a>
+                    <a href="SYSTEM_OVERVIEW.md" class="quick-link-btn">🔬 System Overview</a>
+                </div>
+            </div>
+
+            <h2 style="margin-bottom: 1rem; color: #667eea;">📋 Documentation Timeline</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <strong>Phase 1:</strong> Initial Architecture & Simple Retina
+                </div>
+                <div class="timeline-item">
+                    <strong>Phase 2:</strong> Temporal Dynamics & Foveal Structure
+                </div>
+                <div class="timeline-item">
+                    <strong>Phase 3:</strong> Bipolar Cells & Advanced Features
+                </div>
+                <div class="timeline-item">
+                    <strong>Current:</strong> Complete System with Webcam & 3D Visualization
+                </div>
+            </div>
+
+            <h2 style="margin-bottom: 1.5rem; color: #667eea; margin-top: 2rem;">📄 Documentation Files</h2>
+
+            <div class="doc-grid">
+                <!-- Document 1: README -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">1</div>
+                        <div class="doc-title">README</div>
+                    </div>
+                    <div class="doc-date">Created: Session Start - Main Entry Point</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Overview</span>
+                        <span class="meta-badge badge-level">Beginner</span>
+                        <span class="meta-badge badge-status">Current</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Project homepage and quick reference.</strong><br>
+                        Provides high-level overview of the entire system, quick start instructions, 
+                        and links to detailed documentation. Covers both the original simple system 
+                        and the advanced temporal system. Perfect starting point for anyone new to the project.
+                    </div>
+                    <a href="../README.md" class="doc-link">📖 View README</a>
+                </div>
+
+                <!-- Document 2: ARCHITECTURE -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">2</div>
+                        <div class="doc-title">ARCHITECTURE</div>
+                    </div>
+                    <div class="doc-date">Created: Phase 1 - Design Principles</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Technical</span>
+                        <span class="meta-badge badge-level">Intermediate</span>
+                        <span class="meta-badge badge-status">Foundation</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Core design philosophy and architecture principles.</strong><br>
+                        Details the neuron-as-object paradigm, scalability strategies, biological realism 
+                        approach, and the initial retinal layer implementation. Explains why architectural 
+                        decisions were made and how they support future expansion. Essential for understanding 
+                        the system's foundation.
+                    </div>
+                    <a href="ARCHITECTURE.md" class="doc-link">🏗️ View Architecture</a>
+                </div>
+
+                <!-- Document 3: QUICKSTART -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">3</div>
+                        <div class="doc-title">QUICKSTART</div>
+                    </div>
+                    <div class="doc-date">Created: Phase 1 - Simple System Guide</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Tutorial</span>
+                        <span class="meta-badge badge-level">Beginner</span>
+                        <span class="meta-badge badge-status">Legacy</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Guide for the original simple retinal system.</strong><br>
+                        Step-by-step instructions for using the initial uniform retina implementation with 
+                        basic photoreceptors. Includes usage examples, test patterns, and discussion questions 
+                        about bipolar cells. Good for learning the basics before diving into the temporal system.
+                    </div>
+                    <a href="QUICKSTART.md" class="doc-link">🚀 View Quickstart</a>
+                </div>
+
+                <!-- Document 4: START_HERE -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">4</div>
+                        <div class="doc-title">START HERE</div>
+                    </div>
+                    <div class="doc-date">Created: Phase 3 - Complete System Guide</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Guide</span>
+                        <span class="meta-badge badge-level">All Levels</span>
+                        <span class="meta-badge badge-status">Recommended</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Primary guide for the complete temporal neural system.</strong><br>
+                        Comprehensive walkthrough of the full system including foveal retina, bipolar cells, 
+                        webcam input, and 3D visualization. Includes performance metrics, usage instructions, 
+                        troubleshooting, and discussion of next development steps. <strong>Start here for 
+                        the complete experience!</strong>
+                    </div>
+                    <a href="START_HERE.md" class="doc-link">⭐ View Start Here</a>
+                </div>
+
+                <!-- Document 5: TEMPORAL_SYSTEM -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">5</div>
+                        <div class="doc-title">TEMPORAL SYSTEM</div>
+                    </div>
+                    <div class="doc-date">Created: Phase 3 - Advanced Features</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Technical Deep-Dive</span>
+                        <span class="meta-badge badge-level">Advanced</span>
+                        <span class="meta-badge badge-status">Current</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Complete technical documentation of temporal dynamics.</strong><br>
+                        In-depth explanation of continuous time updates, membrane potentials, action potentials, 
+                        neural oscillations, foveal structure, P/M pathways, and all advanced features. 
+                        Includes architecture diagrams, neuron specifications, performance analysis, and 
+                        scientific basis. Essential for developers and researchers.
+                    </div>
+                    <a href="TEMPORAL_SYSTEM.md" class="doc-link">⚡ View Temporal System</a>
+                </div>
+
+                <!-- Document 6: SYSTEM_OVERVIEW -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">6</div>
+                        <div class="doc-title">SYSTEM OVERVIEW</div>
+                    </div>
+                    <div class="doc-date">Created: Phase 3 - Summary & Status</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Summary</span>
+                        <span class="meta-badge badge-level">All Levels</span>
+                        <span class="meta-badge badge-status">Complete</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>High-level system summary and accomplishments.</strong><br>
+                        Comprehensive overview showing how requirements were met, system statistics, 
+                        biological accuracy comparisons, visualization capabilities, and growth potential. 
+                        Maps out near-term extensions and research opportunities. Perfect for presentations 
+                        and demonstrating what the system can do.
+                    </div>
+                    <a href="SYSTEM_OVERVIEW.md" class="doc-link">🔬 View Overview</a>
+                </div>
+
+                <!-- Document 7: PROJECT_STRUCTURE -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">7</div>
+                        <div class="doc-title">PROJECT STRUCTURE</div>
+                    </div>
+                    <div class="doc-date">Created: Documentation Organization</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Reference</span>
+                        <span class="meta-badge badge-level">All Levels</span>
+                        <span class="meta-badge badge-status">Maintenance</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>File organization and project structure reference.</strong><br>
+                        Shows the complete project directory structure, where to find different types of files, 
+                        and how the documentation is organized. Useful for navigating the codebase and 
+                        understanding the file layout. Reference guide for contributors.
+                    </div>
+                    <a href="PROJECT_STRUCTURE.md" class="doc-link">📁 View Structure</a>
+                </div>
+
+                <!-- Document 8: FUTURE_3D_BRAIN_VIEW -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">8</div>
+                        <div class="doc-title">FUTURE: 3D BRAIN VIEW</div>
+                    </div>
+                    <div class="doc-date">Created: Optimization & Future Planning</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Future Concept</span>
+                        <span class="meta-badge badge-level">Advanced</span>
+                        <span class="meta-badge badge-status">Planned</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Concept for physical 3D brain visualization.</strong><br>
+                        Plans for implementing an efficient 3D view showing neurons as physical objects 
+                        in space, organized in layers. Explains why current Plotly 3D was replaced with 
+                        lightweight 2D, and how to implement proper WebGL/Three.js brain view in future. 
+                        Includes performance targets and implementation roadmap.
+                    </div>
+                    <a href="FUTURE_3D_BRAIN_VIEW.md" class="doc-link">🔮 View Future Plans</a>
+                </div>
+
+                <!-- Document 9: RETINAL_LAYERS_EXPLAINED -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">9</div>
+                        <div class="doc-title">RETINAL LAYERS EXPLAINED</div>
+                    </div>
+                    <div class="doc-date">Created: Complete Retina Implementation</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Guide</span>
+                        <span class="meta-badge badge-level">Intermediate</span>
+                        <span class="meta-badge badge-status">Current</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Understanding the complete retinal architecture.</strong><br>
+                        Explains what you see in the output for each retinal layer: photoreceptors, bipolar cells 
+                        (with horizontal cells), and ganglion cells (with amacrine cells). Covers pooling ratios, 
+                        tripartite synapses, coverage density, and the P/M/ipRGC pathways. Essential for understanding 
+                        your retinal processing pipeline.
+                    </div>
+                    <a href="RETINAL_LAYERS_EXPLAINED.md" class="doc-link">👁️ View Retinal Guide</a>
+                </div>
+
+                <!-- Document 10: COMPLETE_RETINA_SUMMARY -->
+                <div class="doc-card">
+                    <div class="doc-header">
+                        <div class="doc-number">10</div>
+                        <div class="doc-title">COMPLETE RETINA SUMMARY</div>
+                    </div>
+                    <div class="doc-date">Created: Ganglion & Lateral Cells Added</div>
+                    <div class="doc-meta">
+                        <span class="meta-badge badge-type">Summary</span>
+                        <span class="meta-badge badge-level">All Levels</span>
+                        <span class="meta-badge badge-status">Milestone</span>
+                    </div>
+                    <div class="doc-summary">
+                        <strong>Complete retinal implementation milestone achieved!</strong><br>
+                        Summary of all retinal components: improved bipolar density, ganglion cells (P/M/ipRGC), 
+                        horizontal cells, and amacrine cells. Explains tripartite synapses, pooling cascade, 
+                        and realistic neuron ratios. Shows complete retinal architecture ready for LGN integration. 
+                        ~26,000 total retinal neurons implemented!
+                    </div>
+                    <a href="COMPLETE_RETINA_SUMMARY.md" class="doc-link">🎉 View Milestone</a>
+                </div>
+            </div>
+
+            <div class="quick-links" style="margin-top: 2rem;">
+                <h3>🎓 Recommended Reading Order</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <strong>First Time Users:</strong> README → START_HERE → Experiment!
+                    </div>
+                    <div class="timeline-item">
+                        <strong>Developers:</strong> ARCHITECTURE → TEMPORAL_SYSTEM → Code
+                    </div>
+                    <div class="timeline-item">
+                        <strong>Researchers:</strong> SYSTEM_OVERVIEW → TEMPORAL_SYSTEM → Scientific Papers
+                    </div>
+                    <div class="timeline-item">
+                        <strong>Quick Demo:</strong> START_HERE → Run temporal_server.py → Explore
+                    </div>
+                </div>
+            </div>
+
+            <div class="intro" style="margin-top: 2rem;">
+                <h2>🔧 System Components</h2>
+                <p><strong>Core Files:</strong></p>
+                <ul style="margin-left: 2rem; margin-top: 0.5rem;">
+                    <li><code>temporal_neuron.py</code> - Temporal neuron classes with continuous dynamics</li>
+                    <li><code>foveal_retina.py</code> - Retina with eccentricity-based distribution</li>
+                    <li><code>bipolar_cells.py</code> - Bipolar layer with center-surround receptive fields</li>
+                    <li><code>webcam_input.py</code> - Real-time camera input (real or simulated)</li>
+                    <li><code>visualization_3d.py</code> - Interactive 3D visualization system</li>
+                    <li><code>temporal_server.py</code> - Flask server with temporal updates</li>
+                </ul>
+                <p style="margin-top: 1rem;"><strong>Legacy Files (Original Simple System):</strong></p>
+                <ul style="margin-left: 2rem; margin-top: 0.5rem;">
+                    <li><code>neuron.py</code> - Basic neuron classes</li>
+                    <li><code>retina.py</code> - Uniform retinal layer</li>
+                    <li><code>server.py</code> - Simple Flask server</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Bio-Inspired Neural Network System</strong></p>
+            <p>Built with Python, Flask, NumPy, OpenCV, and Plotly</p>
+            <p style="margin-top: 0.5rem; opacity: 0.7;">
+                A biologically realistic neural network with temporal dynamics, 
+                foveal structure, and real-time processing
+            </p>
+            <p style="margin-top: 1rem;">
+                <a href="https://github.com" style="color: #667eea; text-decoration: none;">GitHub</a> • 
+                <a href="../README.md" style="color: #667eea; text-decoration: none;">Project Home</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

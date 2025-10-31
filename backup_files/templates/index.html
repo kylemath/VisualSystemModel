@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Inspired Neural Network Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .architecture-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .layer-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .layer-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(100, 200, 255, 0.5);
+        }
+
+        .layer-card.active {
+            border-color: #4fc3f7;
+            box-shadow: 0 0 30px rgba(79, 195, 247, 0.5);
+        }
+
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .layer-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .layer-status {
+            display: inline-block;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .layer-status.active {
+            background: rgba(76, 175, 80, 0.8);
+        }
+
+        .layer-status.inactive {
+            background: rgba(158, 158, 158, 0.5);
+        }
+
+        .layer-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .info-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-bottom: 0.3rem;
+        }
+
+        .info-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .detail-panel {
+            display: none;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .detail-panel.visible {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .viz-section {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .viz-section h3 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+            background: #000;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        select, input {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        select option {
+            background: #2a5298;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+
+        .receptor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 Bio-Inspired Neural Network</h1>
+        <p>Modular Brain Architecture Visualization</p>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <label>Grid Size:</label>
+                <select id="gridSize">
+                    <option value="16">16×16</option>
+                    <option value="32" selected>32×32</option>
+                    <option value="64">64×64</option>
+                </select>
+                
+                <button onclick="initializeSystem()">Initialize System</button>
+                
+                <label>Test Pattern:</label>
+                <select id="testPattern">
+                    <option value="gradient">RGB Gradient</option>
+                    <option value="checkerboard">Checkerboard</option>
+                    <option value="color_bands">Color Bands</option>
+                    <option value="random">Random Noise</option>
+                </select>
+                
+                <button onclick="processInput()">Process Input</button>
+            </div>
+        </div>
+
+        <div class="architecture-flow" id="architectureFlow">
+            <!-- Retinal Layer -->
+            <div class="layer-card" id="retinaCard" onclick="toggleDetail('retina')">
+                <div class="layer-header">
+                    <div class="layer-title">
+                        👁️ Retinal Layer (Photoreceptors)
+                    </div>
+                    <span class="layer-status inactive" id="retinaStatus">Inactive</span>
+                </div>
+                
+                <div class="layer-info" id="retinaInfo">
+                    <div class="info-item">
+                        <div class="info-label">Total Photoreceptors</div>
+                        <div class="info-value" id="totalPhotoreceptors">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Grid Size</div>
+                        <div class="info-value" id="gridSizeDisplay">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Receptor Types</div>
+                        <div class="info-value">4</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Eyes</div>
+                        <div class="info-value">2</div>
+                    </div>
+                </div>
+
+                <div class="detail-panel" id="retinaDetail">
+                    <h3>Retinal Photoreceptor Activity</h3>
+                    
+                    <div class="visualization-grid">
+                        <!-- Left Eye -->
+                        <div class="viz-section">
+                            <h3>👁️ Left Eye</h3>
+                            <div class="receptor-grid">
+                                <div>
+                                    <p>Rods (Low-light)</p>
+                                    <canvas id="leftRods" width="256" height="256"></canvas>
+                                </div>
+                                <div>
+                                    <p>Red Cones (L)</p>
+                                    <canvas id="leftRed" width="256" height="256"></canvas>
+                                </div>
+                                <div>
+                                    <p>Green Cones (M)</p>
+                                    <canvas id="leftGreen" width="256" height="256"></canvas>
+                                </div>
+                                <div>
+                                    <p>Blue Cones (S)</p>
+                                    <canvas id="leftBlue" width="256" height="256"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Eye -->
+                        <div class="viz-section">
+                            <h3>👁️ Right Eye</h3>
+                            <div class="receptor-grid">
+                                <div>
+                                    <p>Rods (Low-light)</p>
+                                    <canvas id="rightRods" width="256" height="256"></canvas>
+                                </div>
+                                <div>
+                                    <p>Red Cones (L)</p>
+                                    <canvas id="rightRed" width="256" height="256"></canvas>
+                                </div>
+                                <div>
+                                    <p>Green Cones (M)</p>
+                                    <canvas id="rightGreen" width="256" height="256"></canvas>
+                                </div>
+                                <div>
+                                    <p>Blue Cones (S)</p>
+                                    <canvas id="rightBlue" width="256" height="256"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid" id="retinaStats">
+                        <!-- Stats will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder for next layers -->
+            <div class="layer-card" style="opacity: 0.5;">
+                <div class="layer-header">
+                    <div class="layer-title">
+                        🔲 Bipolar Cells (Coming Next)
+                    </div>
+                    <span class="layer-status inactive">Not Implemented</span>
+                </div>
+                <p style="opacity: 0.7;">Next layer to implement: Bipolar cells for edge detection and contrast enhancement</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let systemInitialized = false;
+        let currentDetailView = null;
+
+        async function initializeSystem() {
+            const gridSize = parseInt(document.getElementById('gridSize').value);
+            
+            try {
+                const response = await fetch('/api/initialize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({grid_size: gridSize})
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    systemInitialized = true;
+                    document.getElementById('retinaStatus').textContent = 'Active';
+                    document.getElementById('retinaStatus').className = 'layer-status active';
+                    
+                    const summary = data.system_info.retina;
+                    document.getElementById('totalPhotoreceptors').textContent = 
+                        summary.total_photoreceptors.toLocaleString();
+                    document.getElementById('gridSizeDisplay').textContent = 
+                        summary.grid_size + '×' + summary.grid_size;
+                    
+                    alert('System initialized successfully!');
+                }
+            } catch (error) {
+                console.error('Error initializing system:', error);
+                alert('Failed to initialize system');
+            }
+        }
+
+        async function processInput() {
+            if (!systemInitialized) {
+                alert('Please initialize the system first');
+                return;
+            }
+
+            const pattern = document.getElementById('testPattern').value;
+            
+            try {
+                const response = await fetch('/api/retina/process', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({pattern: pattern, intensity: 1.0})
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    visualizeRetinaActivity(data);
+                    updateRetinaStats(data.summary);
+                }
+            } catch (error) {
+                console.error('Error processing input:', error);
+                alert('Failed to process input');
+            }
+        }
+
+        function visualizeRetinaActivity(data) {
+            // Left eye
+            drawActivityMap('leftRods', data.left_eye.rods, 'grayscale');
+            drawActivityMap('leftRed', data.left_eye.red_cones, 'red');
+            drawActivityMap('leftGreen', data.left_eye.green_cones, 'green');
+            drawActivityMap('leftBlue', data.left_eye.blue_cones, 'blue');
+            
+            // Right eye
+            drawActivityMap('rightRods', data.right_eye.rods, 'grayscale');
+            drawActivityMap('rightRed', data.right_eye.red_cones, 'red');
+            drawActivityMap('rightGreen', data.right_eye.green_cones, 'green');
+            drawActivityMap('rightBlue', data.right_eye.blue_cones, 'blue');
+        }
+
+        function drawActivityMap(canvasId, activityMap, colorScheme) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const size = activityMap.length;
+            
+            const cellWidth = canvas.width / size;
+            const cellHeight = canvas.height / size;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    const activity = activityMap[x][y];
+                    const value = Math.floor(activity * 255);
+                    
+                    let color;
+                    if (colorScheme === 'grayscale') {
+                        color = `rgb(${value}, ${value}, ${value})`;
+                    } else if (colorScheme === 'red') {
+                        color = `rgb(${value}, 0, 0)`;
+                    } else if (colorScheme === 'green') {
+                        color = `rgb(0, ${value}, 0)`;
+                    } else if (colorScheme === 'blue') {
+                        color = `rgb(0, 0, ${value})`;
+                    }
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(y * cellWidth, x * cellHeight, cellWidth, cellHeight);
+                }
+            }
+        }
+
+        function updateRetinaStats(summary) {
+            const statsContainer = document.getElementById('retinaStats');
+            statsContainer.innerHTML = '';
+            
+            const eyes = ['left_eye', 'right_eye'];
+            eyes.forEach(eye => {
+                const eyeData = summary[eye];
+                const eyeLabel = eye === 'left_eye' ? 'Left' : 'Right';
+                
+                for (const [receptorType, stats] of Object.entries(eyeData)) {
+                    const statBox = document.createElement('div');
+                    statBox.className = 'stat-box';
+                    statBox.innerHTML = `
+                        <div class="stat-label">${eyeLabel} ${receptorType}</div>
+                        <div class="stat-value">${(stats.mean_activity * 100).toFixed(1)}%</div>
+                    `;
+                    statsContainer.appendChild(statBox);
+                }
+            });
+        }
+
+        function toggleDetail(layerId) {
+            const detailPanel = document.getElementById(layerId + 'Detail');
+            
+            if (currentDetailView === layerId) {
+                detailPanel.classList.remove('visible');
+                document.getElementById(layerId + 'Card').classList.remove('active');
+                currentDetailView = null;
+            } else {
+                // Close previous detail
+                if (currentDetailView) {
+                    document.getElementById(currentDetailView + 'Detail').classList.remove('visible');
+                    document.getElementById(currentDetailView + 'Card').classList.remove('active');
+                }
+                
+                detailPanel.classList.add('visible');
+                document.getElementById(layerId + 'Card').classList.add('active');
+                currentDetailView = layerId;
+            }
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            console.log('Bio-Inspired Neural Network Visualizer Ready');
+        };
+    </script>
+</body>
+</html>
+
