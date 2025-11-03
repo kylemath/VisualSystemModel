@@ -240,30 +240,36 @@ class SimulatedWebcam:
                 time.sleep(sleep_time)
     
     def _generate_frame(self) -> np.ndarray:
-        """Generate procedural test pattern."""
+        """Generate procedural test pattern with strong contrast."""
         h, w = self.target_size
-        frame = np.zeros((h, w, 3))
+        frame = np.ones((h, w, 3)) * 0.3  # Gray background
         
-        # Moving gradient
-        for i in range(h):
-            for j in range(w):
-                r = (i / h + np.sin(self.time * 2) * 0.5 + 0.5)
-                g = (j / w + np.cos(self.time * 3) * 0.5 + 0.5)
-                b = (np.sin(self.time + i/h * 4) * 0.5 + 0.5)
-                
-                frame[i, j] = [r, g, b]
+        # Create several bright spots moving around
+        # Main bright spot (moving)
+        center_x1 = int(w / 2 + w / 3 * np.sin(self.time * 0.5))
+        center_y1 = int(h / 2 + h / 3 * np.cos(self.time * 0.7))
         
-        # Add some moving features
-        center_x = int(w / 2 + w / 4 * np.sin(self.time))
-        center_y = int(h / 2 + h / 4 * np.cos(self.time * 1.5))
+        # Secondary spot
+        center_x2 = int(w / 2 + w / 4 * np.sin(self.time * 0.8 + 1.5))
+        center_y2 = int(h / 2 + h / 4 * np.cos(self.time * 0.6 + 2.0))
         
-        # Draw a bright spot
-        for i in range(max(0, center_y-5), min(h, center_y+5)):
-            for j in range(max(0, center_x-5), min(w, center_x+5)):
-                dist = np.sqrt((i-center_y)**2 + (j-center_x)**2)
-                if dist < 5:
-                    brightness = (1 - dist/5)
-                    frame[i, j] = [brightness, brightness, brightness]
+        # Draw bright spots (high contrast)
+        for (cx, cy, radius, color) in [
+            (center_x1, center_y1, 15, [1.0, 1.0, 1.0]),  # White spot
+            (center_x2, center_y2, 10, [1.0, 0.2, 0.2]),  # Red spot
+        ]:
+            for i in range(max(0, cy-radius), min(h, cy+radius)):
+                for j in range(max(0, cx-radius), min(w, cx+radius)):
+                    dist = np.sqrt((i-cy)**2 + (j-cx)**2)
+                    if dist < radius:
+                        brightness = (1 - dist/radius) ** 2  # Smooth falloff
+                        # Blend with background
+                        frame[i, j] = frame[i, j] * (1 - brightness) + np.array(color) * brightness
+        
+        # Add some vertical bars for spatial structure
+        bar_positions = [w//4, w//2, 3*w//4]
+        for bar_x in bar_positions:
+            frame[:, max(0, bar_x-2):min(w, bar_x+2)] = 0.7
         
         return np.clip(frame, 0, 1)
     

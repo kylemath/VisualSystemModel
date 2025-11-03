@@ -212,6 +212,10 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
+        #bipolarLeft, #bipolarRight, #ganglionLeft, #ganglionRight {
+            cursor: pointer;
+        }
+
         /* Removed .plotly-graph - using lightweight canvas instead */
 
         .layer-tabs {
@@ -413,18 +417,42 @@
 
         <!-- Main Visualizations -->
         <div class="visualization-container">
+            <!-- Full Webcam View -->
+            <div class="viz-card" style="grid-column: 1 / -1;">
+                <h3>📹 Full Webcam View</h3>
+                <div style="display: flex; gap: 2rem; justify-content: center;">
+                    <div class="canvas-item" style="flex: 1; max-width: 500px;">
+                        <p>Left Eye Full Field</p>
+                        <canvas id="fullWebcamLeft" width="320" height="240" style="border: 2px solid #4fc3f7;"></canvas>
+                    </div>
+                    <div class="canvas-item" style="flex: 1; max-width: 500px;">
+                        <p>Right Eye Full Field</p>
+                        <canvas id="fullWebcamRight" width="320" height="240" style="border: 2px solid #4fc3f7;"></canvas>
+                    </div>
+                </div>
+                <p style="text-align: center; font-size: 0.85rem; opacity: 0.7; margin-top: 0.5rem;">
+                    Green boxes show retina extraction regions • Yellow/orange outline shows retinal receptive field
+                </p>
+            </div>
+            
             <!-- Input Display -->
             <div class="viz-card">
-                <h3>📥 Webcam Input</h3>
+                <h3>📥 Retinal Input (Extracted Regions)</h3>
                 <div class="canvas-grid">
                     <div class="canvas-item">
                         <p>Left Eye</p>
-                        <canvas id="inputLeft" width="256" height="256"></canvas>
+                        <canvas id="inputLeft" width="384" height="384"></canvas>
                     </div>
                     <div class="canvas-item">
                         <p>Right Eye</p>
-                        <canvas id="inputRight" width="256" height="256"></canvas>
+                        <canvas id="inputRight" width="384" height="384"></canvas>
                     </div>
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem;">
+                    <label style="font-size: 0.85rem;">
+                        <input type="checkbox" id="showDifference" onchange="toggleDifferenceView()">
+                        Show L-R Difference
+                    </label>
                 </div>
             </div>
 
@@ -440,18 +468,27 @@
                 <div class="canvas-grid">
                     <div class="canvas-item">
                         <p>Left Eye</p>
-                        <canvas id="retinaLeft" width="256" height="256"></canvas>
+                        <canvas id="retinaLeft" width="384" height="384"></canvas>
                     </div>
                     <div class="canvas-item">
                         <p>Right Eye</p>
-                        <canvas id="retinaRight" width="256" height="256"></canvas>
+                        <canvas id="retinaRight" width="384" height="384"></canvas>
                     </div>
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem;">
+                    <label style="font-size: 0.85rem;">
+                        <input type="checkbox" id="useLogScale" checked>
+                        Log Scale
+                    </label>
                 </div>
             </div>
 
             <!-- Bipolar Cells -->
             <div class="viz-card">
                 <h3>🔲 Bipolar Cells (Center-Surround) + Horizontal</h3>
+                <p style="text-align: center; font-size: 0.85rem; opacity: 0.7; margin-bottom: 0.5rem;">
+                    Click a cell to see its receptive field! 👆
+                </p>
                 <div class="layer-tabs">
                     <div class="tab active" onclick="selectBipolarType('ON')">ON-Center</div>
                     <div class="tab" onclick="selectBipolarType('OFF')">OFF-Center</div>
@@ -459,11 +496,11 @@
                 <div class="canvas-grid">
                     <div class="canvas-item">
                         <p>Left Eye</p>
-                        <canvas id="bipolarLeft" width="256" height="256"></canvas>
+                        <canvas id="bipolarLeft" width="384" height="384"></canvas>
                     </div>
                     <div class="canvas-item">
                         <p>Right Eye</p>
-                        <canvas id="bipolarRight" width="256" height="256"></canvas>
+                        <canvas id="bipolarRight" width="384" height="384"></canvas>
                     </div>
                 </div>
             </div>
@@ -471,6 +508,9 @@
             <!-- Ganglion Cells -->
             <div class="viz-card">
                 <h3>🎯 Retinal Ganglion Cells (Optic Nerve) + Amacrine</h3>
+                <p style="text-align: center; font-size: 0.85rem; opacity: 0.7; margin-bottom: 0.5rem;">
+                    Click a cell to see its receptive field! 👆
+                </p>
                 <div class="layer-tabs">
                     <div class="tab active" onclick="selectGanglionType('P')">P-cells (Parvocellular)</div>
                     <div class="tab" onclick="selectGanglionType('M')">M-cells (Magnocellular)</div>
@@ -478,12 +518,12 @@
                 <div class="canvas-grid">
                     <div class="canvas-item">
                         <p>Left Eye</p>
-                        <canvas id="ganglionLeft" width="256" height="256"></canvas>
+                        <canvas id="ganglionLeft" width="384" height="384"></canvas>
                         <p id="ganglionLeftStats" style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.5rem;">Activity: 0.000 - 0.000</p>
                     </div>
                     <div class="canvas-item">
                         <p>Right Eye</p>
-                        <canvas id="ganglionRight" width="256" height="256"></canvas>
+                        <canvas id="ganglionRight" width="384" height="384"></canvas>
                         <p id="ganglionRightStats" style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.5rem;">Activity: 0.000 - 0.000</p>
                     </div>
                 </div>
@@ -516,6 +556,11 @@
         let current3DView = 'architecture';
         let autoUpdateInterval = null;
         let lastUpdateTime = 0;
+        
+        // Receptive field visualization state
+        let selectedNeuron = null;
+        let receptiveFieldData = null;
+        let currentStateData = null; // Store current state for convex hull computation
 
         // Initialize controls
         document.getElementById('foveaRadius').addEventListener('input', function() {
@@ -595,31 +640,84 @@
 
             try {
                 const response = await fetch('/api/state/current');
+                if (!response.ok) {
+                    console.error('API error:', response.status, response.statusText);
+                    return;
+                }
+                
                 const data = await response.json();
+                
+                if (data.status !== 'success') {
+                    console.error('API returned non-success:', data);
+                    return;
+                }
 
-                if (data.status === 'success') {
-                    // Update input displays
-                    if (data.input.left && data.input.right) {
-                        drawRGBImage('inputLeft', data.input.left);
-                        drawRGBImage('inputRight', data.input.right);
+                // Store current state for convex hull computation
+                currentStateData = data;
+
+                if (data) {
+                    // Update full webcam displays with bounding boxes and receptive field
+                    if (data.input && data.input.full_left && data.input.full_right) {
+                        try {
+                            drawFullWebcamWithOverlays('fullWebcamLeft', data.input.full_left, 
+                                data.input.eye_regions?.left, 'left');
+                            drawFullWebcamWithOverlays('fullWebcamRight', data.input.full_right, 
+                                data.input.eye_regions?.right, 'right');
+                        } catch (e) {
+                            console.error('Error drawing full webcam images:', e);
+                        }
+                    }
+                    
+                    // Update input displays (retinal regions)
+                    if (data.input && data.input.left && data.input.right) {
+                        try {
+                            if (showingDifference) {
+                                // Show difference between left and right
+                                const diff = computeDifference(data.input.left, data.input.right);
+                                drawRGBImage('inputLeft', data.input.left);
+                                drawRGBImage('inputRight', diff);
+                            } else {
+                                drawRGBImage('inputLeft', data.input.left);
+                                drawRGBImage('inputRight', data.input.right);
+                            }
+                        } catch (e) {
+                            console.error('Error drawing input images:', e);
+                        }
+                    } else {
+                        // Clear canvas if no data
+                        const leftCanvas = document.getElementById('inputLeft');
+                        const rightCanvas = document.getElementById('inputRight');
+                        if (leftCanvas) {
+                            const ctx = leftCanvas.getContext('2d');
+                            ctx.fillStyle = '#000';
+                            ctx.fillRect(0, 0, leftCanvas.width, leftCanvas.height);
+                        }
+                        if (rightCanvas) {
+                            const ctx = rightCanvas.getContext('2d');
+                            ctx.fillStyle = '#000';
+                            ctx.fillRect(0, 0, rightCanvas.width, rightCanvas.height);
+                        }
                     }
 
+                    // Check if log scale is enabled
+                    const useLog = document.getElementById('useLogScale')?.checked || false;
+                    
                     // Update retina
                     if (data.retina.left && data.retina.right) {
-                        drawActivityMap('retinaLeft', data.retina.left[currentRetinaType], getRetinaColor(currentRetinaType));
-                        drawActivityMap('retinaRight', data.retina.right[currentRetinaType], getRetinaColor(currentRetinaType));
+                        drawActivityMap('retinaLeft', data.retina.left[currentRetinaType], getRetinaColor(currentRetinaType), true, useLog);
+                        drawActivityMap('retinaRight', data.retina.right[currentRetinaType], getRetinaColor(currentRetinaType), true, useLog);
                     }
 
                     // Update bipolar cells
                     if (data.bipolar.left && data.bipolar.right) {
-                        drawActivityMap('bipolarLeft', data.bipolar.left[currentBipolarType], 'viridis');
-                        drawActivityMap('bipolarRight', data.bipolar.right[currentBipolarType], 'viridis');
+                        drawActivityMap('bipolarLeft', data.bipolar.left[currentBipolarType], 'viridis', true, useLog);
+                        drawActivityMap('bipolarRight', data.bipolar.right[currentBipolarType], 'viridis', true, useLog);
                     }
 
                     // Update ganglion cells
                     if (data.ganglion && data.ganglion.left && data.ganglion.right) {
-                        const leftStats = drawActivityMap('ganglionLeft', data.ganglion.left[currentGanglionType], 'plasma');
-                        const rightStats = drawActivityMap('ganglionRight', data.ganglion.right[currentGanglionType], 'plasma');
+                        const leftStats = drawActivityMap('ganglionLeft', data.ganglion.left[currentGanglionType], 'plasma', true, useLog);
+                        const rightStats = drawActivityMap('ganglionRight', data.ganglion.right[currentGanglionType], 'plasma', true, useLog);
                         
                         // Update stats display
                         if (leftStats) {
@@ -630,6 +728,13 @@
                             document.getElementById('ganglionRightStats').textContent = 
                                 `Activity: ${rightStats.min.toFixed(3)} - ${rightStats.max.toFixed(3)} (auto-scaled)`;
                         }
+                    }
+                    
+                    // Draw receptive field borders if neuron is selected
+                    // IMPORTANT: This must be called AFTER all activity maps are drawn
+                    // so borders appear on top and persist through updates
+                    if (receptiveFieldData && selectedNeuron) {
+                        drawReceptiveFieldVisualization();
                     }
 
                     // Update FPS
@@ -682,23 +787,220 @@
         }
 
         function drawRGBImage(canvasId, imageData) {
+            if (!imageData || !Array.isArray(imageData)) {
+                console.warn(`drawRGBImage: Invalid data for ${canvasId}`);
+                return;
+            }
+            
             const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.warn(`drawRGBImage: Canvas ${canvasId} not found`);
+                return;
+            }
+            
             const ctx = canvas.getContext('2d');
             const size = imageData.length;
+            
+            if (size === 0) {
+                // Clear canvas
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
 
             const cellWidth = canvas.width / size;
             const cellHeight = canvas.height / size;
 
             for (let i = 0; i < size; i++) {
-                for (let j = 0; j < size; j++) {
-                    const [r, g, b] = imageData[i][j];
-                    ctx.fillStyle = `rgb(${r*255}, ${g*255}, ${b*255})`;
+                if (!imageData[i] || !Array.isArray(imageData[i])) continue;
+                
+                for (let j = 0; j < imageData[i].length; j++) {
+                    const pixel = imageData[i][j];
+                    if (!pixel || !Array.isArray(pixel) || pixel.length < 3) continue;
+                    
+                    const [r, g, b] = pixel;
+                    // Clamp values to [0, 1]
+                    const rVal = Math.max(0, Math.min(1, r || 0));
+                    const gVal = Math.max(0, Math.min(1, g || 0));
+                    const bVal = Math.max(0, Math.min(1, b || 0));
+                    
+                    ctx.fillStyle = `rgb(${Math.floor(rVal*255)}, ${Math.floor(gVal*255)}, ${Math.floor(bVal*255)})`;
                     ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
                 }
             }
         }
+        
+        function drawFullWebcamWithOverlays(canvasId, imageData, boundingBox, eye) {
+            if (!imageData || !Array.isArray(imageData)) {
+                return;
+            }
+            
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const height = imageData.length;
+            const width = height > 0 ? imageData[0].length : 0;
+            
+            if (width === 0 || height === 0) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            
+            // Scale to fit canvas
+            const scaleX = canvas.width / width;
+            const scaleY = canvas.height / height;
+            
+            // Draw the webcam image
+            for (let i = 0; i < height; i++) {
+                if (!imageData[i] || !Array.isArray(imageData[i])) continue;
+                for (let j = 0; j < width; j++) {
+                    const pixel = imageData[i][j];
+                    if (!pixel || !Array.isArray(pixel) || pixel.length < 3) continue;
+                    
+                    const [r, g, b] = pixel;
+                    const rVal = Math.max(0, Math.min(1, r || 0));
+                    const gVal = Math.max(0, Math.min(1, g || 0));
+                    const bVal = Math.max(0, Math.min(1, b || 0));
+                    
+                    ctx.fillStyle = `rgb(${Math.floor(rVal*255)}, ${Math.floor(gVal*255)}, ${Math.floor(bVal*255)})`;
+                    ctx.fillRect(j * scaleX, i * scaleY, Math.ceil(scaleX), Math.ceil(scaleY));
+                }
+            }
+            
+            // Draw bounding box for retinal extraction region
+            if (boundingBox && Array.isArray(boundingBox) && boundingBox.length === 4) {
+                const [x1, y1, x2, y2] = boundingBox;
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x1 * scaleX, y1 * scaleY, (x2 - x1) * scaleX, (y2 - y1) * scaleY);
+                
+                // Label
+                ctx.fillStyle = '#00ff00';
+                ctx.font = '12px Arial';
+                ctx.fillText('Retina Extraction Region', x1 * scaleX + 5, y1 * scaleY - 5);
+            }
+            
+            // Draw convex hull of receptive field if selected
+            if (receptiveFieldData && selectedNeuron && selectedNeuron.eye === eye) {
+                drawReceptiveFieldConvexHull(ctx, scaleX, scaleY, width, height, eye);
+            }
+        }
+        
+        function drawReceptiveFieldConvexHull(ctx, scaleX, scaleY, webcamWidth, webcamHeight, eye) {
+            // Get all photoreceptor positions from receptive field
+            const rf = receptiveFieldData.receptive_field;
+            if (!rf) return;
+            
+            let allPositions = [];
+            
+            // Collect positions from receptive field
+            if (selectedNeuron.layer === 'bipolar' && rf) {
+                if (rf.center_photoreceptors) {
+                    allPositions = allPositions.concat(rf.center_photoreceptors);
+                }
+                if (rf.surround_photoreceptors) {
+                    allPositions = allPositions.concat(rf.surround_photoreceptors);
+                }
+            } else if (selectedNeuron.layer === 'ganglion' && rf) {
+                // For ganglion, we need to map bipolar positions back to photoreceptors
+                // This is complex, so for now we'll use bipolar positions as approximation
+                if (rf.on_bipolar_inputs) {
+                    allPositions = allPositions.concat(rf.on_bipolar_inputs);
+                }
+                if (rf.off_bipolar_inputs) {
+                    allPositions = allPositions.concat(rf.off_bipolar_inputs);
+                }
+            }
+            
+            if (allPositions.length === 0) return;
+            
+            // Get eye regions from current state
+            if (!currentStateData || !currentStateData.input || !currentStateData.input.eye_regions) return;
+            const eyeRegions = currentStateData.input.eye_regions;
+            if (!eyeRegions[eye]) return;
+            
+            const [x1, y1, x2, y2] = eyeRegions[eye];
+            const retinalWidth = x2 - x1;
+            const retinalHeight = y2 - y1;
+            const retinalCenterX = (x1 + x2) / 2;
+            const retinalCenterY = (y1 + y2) / 2;
+            
+            // Convert normalized positions to webcam pixel coordinates
+            // Normalized coords are in [-1, 1] relative to retinal region center
+            const webcamPoints = allPositions.map(pos => {
+                const [normX, normY] = Array.isArray(pos) ? pos : [pos[0], pos[1]];
+                // Map from normalized retinal coords to webcam pixel coords
+                const pixelX = retinalCenterX + (normX * retinalWidth / 2);
+                const pixelY = retinalCenterY - (normY * retinalHeight / 2); // Invert Y for webcam coordinates
+                return [pixelX, pixelY];
+            });
+            
+            // Compute convex hull
+            const hull = computeConvexHull(webcamPoints);
+            
+            if (hull.length > 2) {
+                // Draw convex hull outline
+                ctx.strokeStyle = '#ffff00';
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                ctx.moveTo(hull[0][0] * scaleX, hull[0][1] * scaleY);
+                for (let i = 1; i < hull.length; i++) {
+                    ctx.lineTo(hull[i][0] * scaleX, hull[i][1] * scaleY);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+        
+        function computeConvexHull(points) {
+            if (points.length < 3) return points;
+            
+            // Simple convex hull using Graham scan
+            // Find bottom-most point (lowest y, then leftmost)
+            let bottomIdx = 0;
+            for (let i = 1; i < points.length; i++) {
+                if (points[i][1] < points[bottomIdx][1] || 
+                    (points[i][1] === points[bottomIdx][1] && points[i][0] < points[bottomIdx][0])) {
+                    bottomIdx = i;
+                }
+            }
+            
+            const bottomPoint = points[bottomIdx];
+            const sorted = points
+                .map((p, idx) => idx !== bottomIdx ? p : null)
+                .filter(p => p !== null)
+                .map(p => ({
+                    point: p,
+                    angle: Math.atan2(p[1] - bottomPoint[1], p[0] - bottomPoint[0])
+                }))
+                .sort((a, b) => a.angle - b.angle)
+                .map(item => item.point);
+            
+            const hull = [bottomPoint];
+            
+            for (const point of sorted) {
+                while (hull.length > 1) {
+                    const [p1, p2] = hull.slice(-2);
+                    const dx1 = p1[0] - p2[0];
+                    const dy1 = p1[1] - p2[1];
+                    const dx2 = point[0] - p2[0];
+                    const dy2 = point[1] - p2[1];
+                    const cross = dx2 * dy1 - dx1 * dy2;
+                    if (cross <= 0) break;
+                    hull.pop();
+                }
+                hull.push(point);
+            }
+            
+            return hull;
+        }
 
-        function drawActivityMap(canvasId, activityMap, colorScheme, autoScale = true) {
+        function drawActivityMap(canvasId, activityMap, colorScheme, autoScale = true, useLogScale = false) {
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
             const size = activityMap.length;
@@ -728,12 +1030,28 @@
                 maxVal = 1;
             }
 
+            // Use image smoothing for better visual quality
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
                     const activity = activityMap[i][j];
                     
-                    // Normalize to 0-1 range
-                    const normalized = (activity - minVal) / (maxVal - minVal);
+                    // Apply log scale if enabled
+                    let normalized;
+                    if (useLogScale && activity > 0) {
+                        // Log scale: helps visualize low values
+                        const logMin = Math.log10(Math.max(minVal, 1e-6));
+                        const logMax = Math.log10(Math.max(maxVal, 1e-5));
+                        const logVal = Math.log10(Math.max(activity, 1e-6));
+                        normalized = (logVal - logMin) / (logMax - logMin);
+                        normalized = Math.max(0, Math.min(1, normalized));
+                    } else {
+                        // Linear scale
+                        normalized = (activity - minVal) / (maxVal - minVal);
+                    }
+                    
                     const value = Math.floor(normalized * 255);
 
                     let color;
@@ -767,7 +1085,15 @@
                     }
 
                     ctx.fillStyle = color;
-                    ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+                    // Use ceil for width/height to ensure no gaps between cells
+                    // Add small overlap to prevent grid artifacts
+                    const overlap = 0.5; // Half pixel overlap to prevent gaps
+                    ctx.fillRect(
+                        j * cellWidth - overlap, 
+                        i * cellHeight - overlap, 
+                        cellWidth + overlap * 2, 
+                        cellHeight + overlap * 2
+                    );
                 }
             }
             
@@ -814,9 +1140,269 @@
             console.log('Auto-update runs automatically with lightweight 2D rendering');
         }
 
+        // Removed duplicate function - using async updateVisualizations() instead
+
+        let showingDifference = false;
+        function toggleDifferenceView() {
+            showingDifference = document.getElementById('showDifference').checked;
+            console.log('Difference view:', showingDifference ? 'ON' : 'OFF');
+            // Will be applied in next update
+        }
+
+        function computeDifference(leftData, rightData) {
+            // Compute absolute difference between left and right images
+            // Returns a grayscale difference map as RGB
+            const diff = [];
+            for (let i = 0; i < leftData.length; i++) {
+                const row = [];
+                for (let j = 0; j < leftData[i].length; j++) {
+                    // Compute RGB difference magnitude
+                    const diffR = Math.abs(leftData[i][j][0] - rightData[i][j][0]);
+                    const diffG = Math.abs(leftData[i][j][1] - rightData[i][j][1]);
+                    const diffB = Math.abs(leftData[i][j][2] - rightData[i][j][2]);
+                    const avgDiff = (diffR + diffG + diffB) / 3;
+                    // Amplify for visibility
+                    const amplified = Math.min(1.0, avgDiff * 3);
+                    row.push([amplified, amplified, amplified]);
+                }
+                diff.push(row);
+            }
+            return diff;
+        }
+
+        // Click handler for canvas to select neurons
+        function setupCanvasClickHandlers() {
+            // Bipolar cell canvases
+            ['bipolarLeft', 'bipolarRight'].forEach(canvasId => {
+                const canvas = document.getElementById(canvasId);
+                if (canvas) {
+                    canvas.addEventListener('click', (e) => handleCanvasClick(e, canvasId, 'bipolar', canvasId.includes('Left') ? 'left' : 'right'));
+                }
+            });
+            
+            // Ganglion cell canvases
+            ['ganglionLeft', 'ganglionRight'].forEach(canvasId => {
+                const canvas = document.getElementById(canvasId);
+                if (canvas) {
+                    canvas.addEventListener('click', (e) => handleCanvasClick(e, canvasId, 'ganglion', canvasId.includes('Left') ? 'left' : 'right'));
+                }
+            });
+        }
+        
+        async function handleCanvasClick(event, canvasId, layer, eye) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Convert to normalized coordinates [-1, 1]
+            // Canvas coordinates: (0, 0) at top-left, (width, height) at bottom-right
+            // Normalized coordinates: (-1, -1) at bottom-left, (+1, +1) at top-right
+            // Y-axis: canvas y=0 (top) -> normY=+1, canvas y=height (bottom) -> normY=-1
+            const normX = (x / canvas.width) * 2 - 1;
+            const normY = 1 - (y / canvas.height) * 2; // Invert Y axis so +1 is top
+            
+            console.log(`Clicked at canvas (${x.toFixed(1)}, ${y.toFixed(1)}) -> normalized (${normX.toFixed(3)}, ${normY.toFixed(3)})`);
+            
+            try {
+                // Get cell type based on current selection
+                let cellType = null;
+                if (layer === 'bipolar') {
+                    cellType = currentBipolarType;
+                } else if (layer === 'ganglion') {
+                    cellType = currentGanglionType;
+                }
+                
+                const response = await fetch('/api/neuron/receptive_field', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        layer: layer,
+                        eye: eye,
+                        x: normX,
+                        y: normY,
+                        cell_type: cellType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.receptive_field) {
+                    selectedNeuron = {layer, eye, position: data.position, clickedPosition: {x: normX, y: normY}};
+                    receptiveFieldData = data;
+                    console.log('Selected neuron:', data);
+                    console.log(`Cell found at position: (${data.position[0]?.toFixed(3)}, ${data.position[1]?.toFixed(3)})`);
+                    console.log(`Clicked position: (${normX.toFixed(3)}, ${normY.toFixed(3)})`);
+                    console.log('Receptive field data:', JSON.stringify(data.receptive_field, null, 2));
+                    
+                    // Force immediate redraw to show borders
+                    await updateVisualizations();
+                } else {
+                    console.warn('No neuron found at position', data);
+                    // Clear selection if no neuron found
+                    selectedNeuron = null;
+                    receptiveFieldData = null;
+                }
+            } catch (error) {
+                console.error('Error getting receptive field:', error);
+                selectedNeuron = null;
+                receptiveFieldData = null;
+            }
+        }
+        
+        function drawReceptiveFieldBorders(canvasId, positions, borderColor = '#ffff00', borderWidth = 3) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !positions || positions.length === 0) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Get grid size from the canvas - assume square
+            // We'll infer it from the activity map size, but for now use a reasonable default
+            // The actual grid size varies, so we'll make the borders adaptive
+            const canvasSize = Math.min(canvas.width, canvas.height);
+            const cellSize = canvasSize / 64; // Default to 64x64, but borders scale
+            
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = borderWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            for (const pos of positions) {
+                // Handle both tuple (x, y) and array [x, y] formats
+                let x, y;
+                if (Array.isArray(pos)) {
+                    if (pos.length >= 2) {
+                        [x, y] = pos;
+                    } else {
+                        console.warn('Invalid position format:', pos);
+                        continue;
+                    }
+                } else {
+                    console.warn('Position is not an array:', pos);
+                    continue;
+                }
+                
+                // Convert from normalized [-1, 1] to canvas coordinates
+                // Y-axis: +1 (top) -> 0, -1 (bottom) -> height (inverted)
+                const canvasX = ((x + 1) / 2) * canvas.width;
+                const canvasY = ((1 - y) / 2) * canvas.height; // Invert Y axis
+                
+                // Draw border around position (small circle or square)
+                // Use adaptive size based on canvas
+                const radius = Math.max(3, Math.min(cellSize * 1.5, canvasSize / 20));
+                
+                ctx.beginPath();
+                ctx.arc(canvasX, canvasY, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                // Also draw a small filled circle for better visibility
+                ctx.fillStyle = borderColor;
+                ctx.globalAlpha = 0.3;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+        
+        function drawReceptiveFieldVisualization() {
+            if (!receptiveFieldData || !selectedNeuron) {
+                console.log('No receptive field data to draw');
+                return;
+            }
+            
+            const {layer, eye} = selectedNeuron;
+            const rf = receptiveFieldData.receptive_field;
+            
+            if (!rf) {
+                console.warn('Receptive field data missing');
+                return;
+            }
+            
+            console.log(`Drawing receptive field for ${layer} ${eye} cell`);
+            
+            // Yellow borders on inputs (lower layers)
+            if (layer === 'ganglion' && rf) {
+                // Show bipolar inputs on bipolar layer
+                if (rf.on_bipolar_inputs && rf.on_bipolar_inputs.length > 0) {
+                    const canvasId = eye === 'left' ? 'bipolarLeft' : 'bipolarRight';
+                    console.log(`Drawing ${rf.on_bipolar_inputs.length} ON bipolar inputs on ${canvasId}`);
+                    drawReceptiveFieldBorders(canvasId, rf.on_bipolar_inputs, '#ffff00', 3);
+                }
+                if (rf.off_bipolar_inputs && rf.off_bipolar_inputs.length > 0) {
+                    const canvasId = eye === 'left' ? 'bipolarLeft' : 'bipolarRight';
+                    console.log(`Drawing ${rf.off_bipolar_inputs.length} OFF bipolar inputs on ${canvasId}`);
+                    drawReceptiveFieldBorders(canvasId, rf.off_bipolar_inputs, '#ffff00', 3);
+                }
+            } else if (layer === 'bipolar' && rf) {
+                // Show photoreceptor inputs on retina layer
+                if (rf.center_photoreceptors && rf.center_photoreceptors.length > 0) {
+                    const canvasId = eye === 'left' ? 'retinaLeft' : 'retinaRight';
+                    console.log(`Drawing ${rf.center_photoreceptors.length} center photoreceptors on ${canvasId}`);
+                    drawReceptiveFieldBorders(canvasId, rf.center_photoreceptors, '#ffff00', 3);
+                }
+                if (rf.surround_photoreceptors && rf.surround_photoreceptors.length > 0) {
+                    const canvasId = eye === 'left' ? 'retinaLeft' : 'retinaRight';
+                    console.log(`Drawing ${rf.surround_photoreceptors.length} surround photoreceptors on ${canvasId}`);
+                    drawReceptiveFieldBorders(canvasId, rf.surround_photoreceptors, '#ffaa00', 3); // Orange for surround
+                }
+            }
+            
+            // Yellow borders on outputs (higher layers)
+            if (receptiveFieldData.output_targets && receptiveFieldData.output_targets.length > 0) {
+                const targets = receptiveFieldData.output_targets;
+                const positions = targets.map(t => {
+                    // Handle both tuple and array formats
+                    if (Array.isArray(t.position)) {
+                        return t.position;
+                    } else if (t.position && t.position.length === 2) {
+                        return [t.position[0], t.position[1]];
+                    }
+                    return t.position;
+                }).filter(p => p != null);
+                
+                if (positions.length > 0 && layer === 'bipolar') {
+                    // Show ganglion outputs on ganglion layer
+                    const canvasId = eye === 'left' ? 'ganglionLeft' : 'ganglionRight';
+                    console.log(`Drawing ${positions.length} ganglion outputs on ${canvasId}`);
+                    drawReceptiveFieldBorders(canvasId, positions, '#ffff00', 3);
+                }
+            }
+            
+            // Highlight the selected neuron itself with a red border
+            // Use the actual cell position from the API (may be slightly offset from click)
+            const selectedCanvasId = layer === 'bipolar' 
+                ? (eye === 'left' ? 'bipolarLeft' : 'bipolarRight')
+                : (eye === 'left' ? 'ganglionLeft' : 'ganglionRight');
+            if (rf.cell_position) {
+                // Handle tuple format
+                let cellPos;
+                if (Array.isArray(rf.cell_position)) {
+                    cellPos = rf.cell_position;
+                } else if (rf.cell_position.length === 2) {
+                    cellPos = [rf.cell_position[0], rf.cell_position[1]];
+                } else {
+                    cellPos = rf.cell_position;
+                }
+                console.log(`Highlighting selected cell at ${selectedCanvasId} position: (${cellPos[0]?.toFixed(3)}, ${cellPos[1]?.toFixed(3)})`);
+                drawReceptiveFieldBorders(selectedCanvasId, [cellPos], '#ff0000', 5); // Red for selected, thicker
+                
+                // Also show click position with a different color for debugging
+                if (selectedNeuron.clickedPosition) {
+                    drawReceptiveFieldBorders(selectedCanvasId, [[selectedNeuron.clickedPosition.x, selectedNeuron.clickedPosition.y]], '#00ff00', 3); // Green for click
+                }
+            }
+        }
+        
+        function clearReceptiveFieldBorders(canvasId) {
+            // Borders will be redrawn with activity maps
+            // This is just for cleanup if needed
+        }
+
         // Initialize on load
         window.onload = function() {
             console.log('Temporal Bio-Inspired Neural Network Ready');
+            setupCanvasClickHandlers();
         };
     </script>
 </body>

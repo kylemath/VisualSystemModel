@@ -34,6 +34,16 @@ class FovealRetina:
         # Center (0, 0) is fovea
         self.spatial_extent = 2.0
         
+        # Blind spot parameters (optic disc where optic nerve exits)
+        # Located temporal (nasal side) to fovea - anatomically correct
+        # Left eye: blind spot is temporal (right/east side in visual field)
+        # Right eye: blind spot is temporal (left/west side in visual field)
+        self.blind_spot_offset = {
+            'left': np.array([0.18, 0.0]),   # East (right side) - temporal for left eye
+            'right': np.array([-0.18, 0.0])  # West (left side) - temporal for right eye
+        }
+        self.blind_spot_radius = 0.04  # About 5 degrees visual angle
+        
         # Create photoreceptors for each eye
         self.photoreceptors = {
             'left': self._create_eye_receptors('left'),
@@ -73,55 +83,76 @@ class FovealRetina:
                 # Calculate eccentricity (distance from center)
                 eccentricity = np.sqrt(x**2 + y**2)
                 
+                # Check if in blind spot (optic disc)
+                blind_spot_center = self.blind_spot_offset[eye]
+                dist_from_blind_spot = np.sqrt(
+                    (x - blind_spot_center[0])**2 + (y - blind_spot_center[1])**2
+                )
+                in_blind_spot = dist_from_blind_spot < self.blind_spot_radius
+                
+                # Skip creating receptors in blind spot
+                if in_blind_spot:
+                    continue
+                
                 # Determine receptor densities based on eccentricity
                 in_fovea = eccentricity < self.fovea_radius
                 
-                if in_fovea:
-                    # Fovea: All cones, very few rods
-                    # High density of red and green, fewer blue
+                # Cone density: gradual exponential falloff from fovea
+                # More gradual than before - uses smoother decay function
+                cone_density_factor = np.exp(-eccentricity * 1.2)  # Gradual falloff
+                
+                # Red and green cones: high in fovea, gradual falloff
+                if np.random.rand() < cone_density_factor:
                     receptors['red_cones'].append(
                         TemporalPhotoreceptor('red', position, eye, eccentricity)
                     )
+                
+                if np.random.rand() < cone_density_factor:
                     receptors['green_cones'].append(
                         TemporalPhotoreceptor('green', position, eye, eccentricity)
                     )
-                    
-                    # Blue cones: sparse even in fovea
-                    if np.random.rand() < 0.5:
-                        receptors['blue_cones'].append(
-                            TemporalPhotoreceptor('blue', position, eye, eccentricity)
+                
+                # Blue cones: sparse everywhere, but still follow gradient
+                if np.random.rand() < cone_density_factor * 0.4:
+                    receptors['blue_cones'].append(
+                        TemporalPhotoreceptor('blue', position, eye, eccentricity)
+                    )
+                
+                # Rod density: Annular pattern with peak where cones start to drop
+                # Highest density in annulus where fovea transitions to periphery
+                # This creates a "rods fill the gaps" pattern
+                fovea_edge = self.fovea_radius
+                periphery_start = fovea_edge * 1.5  # Start of high rod density
+                periphery_end = fovea_edge * 3.0    # End of high rod density
+                
+                if eccentricity < fovea_edge:
+                    # Inside fovea: very few rods
+                    if np.random.rand() < 0.05:
+                        receptors['rods'].append(
+                            TemporalPhotoreceptor('rod', position, eye, eccentricity)
                         )
-                    
-                    # Very few rods in fovea
-                    if np.random.rand() < 0.1:
+                elif fovea_edge <= eccentricity < periphery_start:
+                    # Transition zone: rods start appearing
+                    rod_prob = 0.3 + (eccentricity - fovea_edge) / (periphery_start - fovea_edge) * 0.7
+                    if np.random.rand() < rod_prob:
+                        receptors['rods'].append(
+                            TemporalPhotoreceptor('rod', position, eye, eccentricity)
+                        )
+                elif periphery_start <= eccentricity < periphery_end:
+                    # Peak rod density zone (annulus)
+                    rod_prob = 1.0 - (eccentricity - periphery_start) / (periphery_end - periphery_start) * 0.3
+                    rod_prob = max(0.7, rod_prob)  # Maintain high density
+                    if np.random.rand() < rod_prob:
                         receptors['rods'].append(
                             TemporalPhotoreceptor('rod', position, eye, eccentricity)
                         )
                 else:
-                    # Periphery: More rods, sparse cones
-                    # Density decreases with eccentricity
-                    
-                    # Rods: Dense in periphery
-                    receptors['rods'].append(
-                        TemporalPhotoreceptor('rod', position, eye, eccentricity)
-                    )
-                    
-                    # Cones: Sparser in periphery
-                    cone_prob = np.exp(-eccentricity * 2)  # Exponential falloff
-                    
-                    if np.random.rand() < cone_prob * 0.7:
-                        receptors['red_cones'].append(
-                            TemporalPhotoreceptor('red', position, eye, eccentricity)
-                        )
-                    
-                    if np.random.rand() < cone_prob * 0.7:
-                        receptors['green_cones'].append(
-                            TemporalPhotoreceptor('green', position, eye, eccentricity)
-                        )
-                    
-                    if np.random.rand() < cone_prob * 0.3:
-                        receptors['blue_cones'].append(
-                            TemporalPhotoreceptor('blue', position, eye, eccentricity)
+                    # Far periphery: rods still present but slightly decreasing
+                    rod_prob = 0.9 - (eccentricity - periphery_end) * 0.1
+                    rod_prob = max(0.5, rod_prob)  # Never go below 50%
+                    if np.random.rand() < rod_prob:
+                        receptors['rods'].append(
+                            TemporalPhotoreceptor('rod', position, eye, eccentricity)
                         )
         
         return receptors
@@ -221,30 +252,66 @@ class FovealRetina:
     def get_activity_map(self, eye: str, receptor_type: str) -> np.ndarray:
         """
         Get activity map for specific receptor type.
-        Interpolate sparse receptors to grid.
+        Use smooth interpolation to avoid grid artifacts from sparse receptor distribution.
         """
         activity_map = np.zeros((self.grid_size, self.grid_size))
         count_map = np.zeros((self.grid_size, self.grid_size))
         
         receptors = self.photoreceptors[eye][receptor_type]
         
+        if len(receptors) == 0:
+            return activity_map
+        
+        # First pass: accumulate activations with bilinear weighting
+        # This prevents discrete binning artifacts
         for receptor in receptors:
             x, y = receptor.position
-            i = int((x + 1.0) / 2.0 * (self.grid_size - 1))
-            j = int((y + 1.0) / 2.0 * (self.grid_size - 1))
+            activation = receptor.get_activation()
             
-            i = np.clip(i, 0, self.grid_size - 1)
-            j = np.clip(j, 0, self.grid_size - 1)
+            # Convert to grid coordinates (floating point)
+            grid_i = (x + 1.0) / 2.0 * (self.grid_size - 1)
+            grid_j = (y + 1.0) / 2.0 * (self.grid_size - 1)
             
-            activity_map[i, j] += receptor.get_activation()
-            count_map[i, j] += 1
+            # Get integer indices
+            i0 = int(np.floor(grid_i))
+            i1 = min(i0 + 1, self.grid_size - 1)
+            j0 = int(np.floor(grid_j))
+            j1 = min(j0 + 1, self.grid_size - 1)
+            
+            # Bilinear interpolation weights
+            di = grid_i - i0
+            dj = grid_j - j0
+            
+            # Distribute activation to four nearest grid points
+            w00 = (1 - di) * (1 - dj)
+            w01 = (1 - di) * dj
+            w10 = di * (1 - dj)
+            w11 = di * dj
+            
+            # Add weighted contributions
+            activity_map[i0, j0] += activation * w00
+            activity_map[i0, j1] += activation * w01
+            activity_map[i1, j0] += activation * w10
+            activity_map[i1, j1] += activation * w11
+            
+            count_map[i0, j0] += w00
+            count_map[i0, j1] += w01
+            count_map[i1, j0] += w10
+            count_map[i1, j1] += w11
         
-        # Average where multiple receptors at same position
-        mask = count_map > 0
+        # Normalize by weights to get proper averages
+        mask = count_map > 1e-6  # Avoid division by very small numbers
         activity_map[mask] /= count_map[mask]
         
-        # Interpolate zeros (could use scipy.interpolate for smoother)
-        # For now, simple nearest-neighbor fill
+        # Fill remaining zeros with light smoothing to remove grid artifacts
+        from scipy.ndimage import gaussian_filter
+        # Only smooth areas with data, preserve zeros elsewhere
+        smoothed = gaussian_filter(activity_map, sigma=0.8, mode='constant', cval=0.0)
+        # Only use smoothed values where original was zero but nearby values exist
+        mask_zeros = activity_map == 0
+        mask_nearby = gaussian_filter(count_map, sigma=1.0) > 0.1
+        fill_mask = mask_zeros & mask_nearby
+        activity_map[fill_mask] = smoothed[fill_mask]
         
         return activity_map
     

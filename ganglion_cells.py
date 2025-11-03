@@ -375,4 +375,76 @@ class GanglionLayer:
                     })
         
         return output
+    
+    def find_neuron_at_position(self, eye: str, x: float, y: float,
+                                cell_type: str = None, max_distance: float = 0.15) -> Optional['GanglionCell']:
+        """
+        Find ganglion cell closest to given position.
+        
+        Args:
+            eye: 'left' or 'right'
+            x, y: Spatial position in [-1, 1] range
+            cell_type: 'P', 'M', 'ipRGC', or None (search all)
+            max_distance: Maximum distance to consider
+        
+        Returns:
+            Closest GanglionCell or None
+        """
+        closest = None
+        min_dist = max_distance
+        
+        types_to_search = [cell_type] if cell_type else ['P', 'M', 'ipRGC']
+        
+        for ct in types_to_search:
+            for cell in self.ganglion_cells[eye][ct]:
+                gx, gy = cell.position
+                dist = np.sqrt((x - gx)**2 + (y - gy)**2)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest = cell
+        
+        return closest
+    
+    def get_receptive_field_info(self, cell: GanglionCell) -> Dict:
+        """
+        Get receptive field information for a ganglion cell.
+        
+        Returns:
+            Dict with positions of input bipolar cells
+        """
+        on_bipolar_positions = [(b.position[0], b.position[1]) 
+                               for b in cell.on_bipolar_inputs]
+        off_bipolar_positions = [(b.position[0], b.position[1]) 
+                                for b in cell.off_bipolar_inputs]
+        
+        return {
+            'on_bipolar_inputs': on_bipolar_positions,
+            'off_bipolar_inputs': off_bipolar_positions,
+            'cell_position': cell.position,
+            'cell_type': cell.cell_subtype
+        }
+    
+    def find_ganglions_connected_to_bipolar(self, bipolar_cell) -> List[Dict]:
+        """
+        Find ganglion cells that receive input from a specific bipolar cell.
+        """
+        connected = []
+        bipolar_pos = bipolar_cell.position
+        
+        for eye in ['left', 'right']:
+            if bipolar_cell.eye != eye:
+                continue
+            
+            for cell_type in ['P', 'M', 'ipRGC']:
+                for ganglion in self.ganglion_cells[eye][cell_type]:
+                    # Check if this bipolar is in ganglion's inputs
+                    all_inputs = ganglion.on_bipolar_inputs + ganglion.off_bipolar_inputs
+                    if bipolar_cell in all_inputs:
+                        connected.append({
+                            'position': ganglion.position,
+                            'cell_type': ganglion.cell_subtype,
+                            'id': ganglion.id
+                        })
+        
+        return connected
 

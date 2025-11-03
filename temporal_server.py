@@ -14,7 +14,7 @@ from foveal_retina import FovealRetina
 from bipolar_cells import BipolarLayer
 from ganglion_cells import GanglionLayer
 from lateral_cells import LateralProcessingLayer
-from webcam_input import WebcamInput, SimulatedWebcam
+from foveal_input_system import FovealInputSystem
 from visualization_2d import (NeuralVisualizer2D, generate_safe_json,
                              create_network_summary_2d)
 
@@ -27,7 +27,7 @@ neural_system = {
     'bipolar_layer': None,
     'ganglion_layer': None,
     'lateral_layer': None,
-    'webcam': None,
+    'foveal_input': None,  # Replaces 'webcam', includes eye movements
     'visualizer': NeuralVisualizer2D(),
     'is_running': False,
     'update_thread': None,
@@ -42,9 +42,13 @@ def update_loop():
     while neural_system['is_running']:
         loop_start = time.time()
         
-        # Get webcam frames
-        if neural_system['webcam'] and neural_system['webcam'].is_running:
-            left_frame, right_frame = neural_system['webcam'].get_frames()
+        # Update eye movements and get foveal frames
+        if neural_system['foveal_input']:
+            # Update eye movements (microsaccades, drift, tremor)
+            neural_system['foveal_input'].update(dt)
+            
+            # Get foveal frames from eye positions
+            left_frame, right_frame = neural_system['foveal_input'].get_foveal_frames()
             
             # Process through retina
             if neural_system['retina']:
@@ -115,20 +119,14 @@ def initialize_system():
             neural_system['ganglion_layer']
         )
         
-        # Initialize webcam
-        print("Initializing webcam...")
-        if use_real_webcam:
-            neural_system['webcam'] = WebcamInput(
-                target_size=(grid_size, grid_size),
-                fps=fps
-            )
-        else:
-            neural_system['webcam'] = SimulatedWebcam(
-                target_size=(grid_size, grid_size),
-                fps=fps
-            )
-        
-        neural_system['webcam'].start()
+        # Initialize foveal input system (webcam + eye movements)
+        print("Initializing foveal input system with eye movements...")
+        neural_system['foveal_input'] = FovealInputSystem(
+            use_real_webcam=use_real_webcam,
+            webcam_size=(320, 240),  # Full visual field
+            foveal_size=(grid_size, grid_size),  # High-res fovea
+            camera_index=0
+        )
         
         # Start update loop
         neural_system['is_running'] = True
@@ -144,15 +142,17 @@ def initialize_system():
         ganglion_summary = neural_system['ganglion_layer'].get_summary()
         lateral_summary = neural_system['lateral_layer'].get_summary()
         
+        eye_state = neural_system['foveal_input'].get_eye_state()
+        
         return jsonify({
             'status': 'success',
-            'message': 'System initialized successfully',
+            'message': 'System initialized successfully (with eye movements)',
             'system_info': {
                 'retina': retina_summary,
                 'bipolar_layer': bipolar_summary,
                 'ganglion_layer': ganglion_summary,
                 'lateral_layer': lateral_summary,
-                'webcam': neural_system['webcam'].get_status()
+                'eye_movements': eye_state
             }
         })
         
@@ -169,8 +169,8 @@ def shutdown_system():
     try:
         neural_system['is_running'] = False
         
-        if neural_system['webcam']:
-            neural_system['webcam'].stop()
+        if neural_system['foveal_input']:
+            neural_system['foveal_input'].stop()
         
         if neural_system['update_thread']:
             neural_system['update_thread'].join(timeout=2.0)
@@ -239,19 +239,43 @@ def get_current_state():
                 'right', 'M'
             ).tolist()
         
-        # Get current input frames
+        # Get current input frames (retinal regions)
         left_input, right_input = None, None
-        if neural_system['webcam']:
-            left_input, right_input = neural_system['webcam'].get_frames()
-            left_input = left_input.tolist()
-            right_input = right_input.tolist()
+        full_left_frame, full_right_frame = None, None
+        eye_regions = None
+        
+        if neural_system['foveal_input']:
+            try:
+                left_input, right_input = neural_system['foveal_input'].get_foveal_frames()
+                if left_input is not None and right_input is not None:
+                    left_input = left_input.tolist()
+                    right_input = right_input.tolist()
+                
+                # Get full frames for webcam visualization
+                full_left_frame, full_right_frame = neural_system['foveal_input'].get_full_frames()
+                if full_left_frame is not None and full_right_frame is not None:
+                    full_left_frame = full_left_frame.tolist()
+                    full_right_frame = full_right_frame.tolist()
+                
+                # Get eye bounding boxes
+                eye_state = neural_system['foveal_input'].get_eye_state()
+                if 'foveal_regions' in eye_state:
+                    eye_regions = eye_state['foveal_regions']
+                    
+            except Exception as e:
+                print(f"Error getting foveal frames: {e}")
+                import traceback
+                traceback.print_exc()
         
         return jsonify({
             'status': 'success',
             'timestamp': time.time(),
             'input': {
                 'left': left_input,
-                'right': right_input
+                'right': right_input,
+                'full_left': full_left_frame,
+                'full_right': full_right_frame,
+                'eye_regions': eye_regions
             },
             'retina': {
                 'left': left_retina_maps,
@@ -290,7 +314,7 @@ def get_summary():
     
     summary = {
         'retina': neural_system['retina'].get_summary(),
-        'webcam': neural_system['webcam'].get_status() if neural_system['webcam'] else None
+        'eye_movements': neural_system['foveal_input'].get_eye_state() if neural_system['foveal_input'] else None
     }
     
     if neural_system['bipolar_layer']:
@@ -417,27 +441,203 @@ def get_optic_nerve_output(eye):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/eye_movements/state', methods=['GET'])
+def get_eye_movement_state():
+    """Get current eye movement state."""
+    if not neural_system['foveal_input']:
+        return jsonify({'error': 'Eye movement system not initialized'}), 400
+    
+    try:
+        state = neural_system['foveal_input'].get_eye_state()
+        return jsonify(state)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/eye_movements/saccade', methods=['POST'])
+def command_saccade():
+    """
+    Command a saccade to target location.
+    
+    POST body: {"x": float, "y": float}  (normalized coords [-1, 1])
+    """
+    if not neural_system['foveal_input']:
+        return jsonify({'error': 'Eye movement system not initialized'}), 400
+    
+    try:
+        data = request.json
+        x = data.get('x', 0.0)
+        y = data.get('y', 0.0)
+        
+        neural_system['foveal_input'].saccade_to(x, y)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Saccade commanded to ({x:.2f}, {y:.2f})'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/eye_movements/vergence', methods=['POST'])
+def set_vergence():
+    """
+    Set vergence angle for depth.
+    
+    POST body: {"angle": float}  (degrees, 0=parallel/far, +15=converged/near)
+    """
+    if not neural_system['foveal_input']:
+        return jsonify({'error': 'Eye movement system not initialized'}), 400
+    
+    try:
+        data = request.json
+        angle = data.get('angle', 0.0)
+        
+        neural_system['foveal_input'].set_vergence(angle)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Vergence set to {angle:.1f} degrees'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/neuron/receptive_field', methods=['POST'])
+def get_receptive_field():
+    """
+    Get receptive field information for a neuron at clicked position.
+    
+    POST body: {
+        "layer": "bipolar" or "ganglion",
+        "eye": "left" or "right",
+        "x": float,  // Position in [-1, 1]
+        "y": float,  // Position in [-1, 1]
+        "cell_type": "ON"/"OFF" for bipolar, "P"/"M" for ganglion (optional)
+    }
+    """
+    if not neural_system['retina']:
+        return jsonify({'error': 'System not initialized'}), 400
+    
+    try:
+        data = request.json
+        layer = data.get('layer')
+        eye = data.get('eye')
+        x = float(data.get('x'))
+        y = float(data.get('y'))
+        cell_type = data.get('cell_type')
+        
+        result = {
+            'layer': layer,
+            'eye': eye,
+            'position': (x, y),
+            'receptive_field': None,
+            'output_targets': []
+        }
+        
+        if layer == 'bipolar':
+            if not neural_system['bipolar_layer']:
+                return jsonify({'error': 'Bipolar layer not initialized'}), 400
+            
+            cell = neural_system['bipolar_layer'].find_neuron_at_position(
+                eye, x, y, cell_type
+            )
+            
+            if cell:
+                rf_info = neural_system['bipolar_layer'].get_receptive_field_info(cell)
+                # Subsample photoreceptor positions for performance
+                # Limit to max 500 positions per region for fast rendering
+                max_positions = 500
+                
+                if rf_info.get('center_photoreceptors'):
+                    center = rf_info['center_photoreceptors']
+                    if len(center) > max_positions:
+                        step = len(center) // max_positions
+                        rf_info['center_photoreceptors'] = center[::step]
+                
+                if rf_info.get('surround_photoreceptors'):
+                    surround = rf_info['surround_photoreceptors']
+                    if len(surround) > max_positions:
+                        step = len(surround) // max_positions
+                        rf_info['surround_photoreceptors'] = surround[::step]
+                
+                result['receptive_field'] = rf_info
+                
+                # Find ganglion cells that receive input from this bipolar
+                if neural_system['ganglion_layer']:
+                    result['output_targets'] = neural_system['ganglion_layer'].find_ganglions_connected_to_bipolar(cell)
+        
+        elif layer == 'ganglion':
+            if not neural_system['ganglion_layer']:
+                return jsonify({'error': 'Ganglion layer not initialized'}), 400
+            
+            cell = neural_system['ganglion_layer'].find_neuron_at_position(
+                eye, x, y, cell_type
+            )
+            
+            if cell:
+                rf_info = neural_system['ganglion_layer'].get_receptive_field_info(cell)
+                # Subsample bipolar positions for performance
+                max_positions = 500
+                
+                if rf_info.get('on_bipolar_inputs'):
+                    on_bipolars = rf_info['on_bipolar_inputs']
+                    if len(on_bipolars) > max_positions:
+                        step = len(on_bipolars) // max_positions
+                        rf_info['on_bipolar_inputs'] = on_bipolars[::step]
+                
+                if rf_info.get('off_bipolar_inputs'):
+                    off_bipolars = rf_info['off_bipolar_inputs']
+                    if len(off_bipolars) > max_positions:
+                        step = len(off_bipolars) // max_positions
+                        rf_info['off_bipolar_inputs'] = off_bipolars[::step]
+                
+                result['receptive_field'] = rf_info
+                # Ganglion cells are output layer, so no forward connections yet
+        
+        else:
+            return jsonify({'error': f'Unknown layer: {layer}'}), 400
+        
+        if not result['receptive_field']:
+            return jsonify({'error': 'No neuron found at position'}), 404
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("=" * 70)
     print("Bio-Inspired Temporal Neural Network Server")
     print("=" * 70)
     print("\nComplete Retinal System:")
     print("  ✓ Layer 0: Photoreceptors (Rods + RGB Cones, ~22K neurons)")
+    print("  ✓         - Blind spot correctly positioned (temporal)")
     print("  ✓ Layer 1: Bipolar cells (ON/OFF, P/M pathways, ~3.7K neurons)")
     print("  ✓         + Horizontal cells (lateral inhibition, ~100 neurons)")
     print("  ✓ Layer 2: Ganglion cells (P/M/ipRGC, optic nerve, ~388 neurons)")
     print("  ✓         + Amacrine cells (motion/direction, ~100 neurons)")
+    print("\nEye Movement System:")
+    print("  ✓ Microsaccades (prevent adaptation, ~1 Hz)")
+    print("  ✓ Ocular drift and tremor (realistic fixation)")
+    print("  ✓ Voluntary saccades (API control)")
+    print("  ✓ Vergence movements (binocular depth)")
+    print("  ✓ Foveal extraction from large visual field")
     print("\nFeatures:")
     print("  ✓ Foveal structure with eccentricity-based pooling")
     print("  ✓ Tripartite synapses (horizontal & amacrine modulation)")
     print("  ✓ Continuous temporal dynamics with spiking")
-    print("  ✓ Webcam input (real or simulated)")
+    print("  ✓ Webcam input with active vision (eye movements)")
     print("  ✓ Lightweight 2D visualization")
     print("\nTotal: ~26,000 retinal neurons")
     print("Output: Optic nerve ready for LGN integration")
-    print("\nStarting server at http://localhost:5000")
+    print("\nStarting server at http://localhost:5001")
+    print("Note: Using port 5001 to avoid AirPlay Receiver on port 5000")
     print("=" * 70)
     print()
     
-    app.run(debug=True, port=5000, threaded=True)
+    app.run(debug=True, port=5001, threaded=True, host='127.0.0.1')
 

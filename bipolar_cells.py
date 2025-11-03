@@ -349,4 +349,60 @@ class BipolarLayer:
                 for eye, eye_data in self.bipolar_cells.items()
             }
         }
+    
+    def find_neuron_at_position(self, eye: str, x: float, y: float, 
+                                cell_type: str = None, max_distance: float = 0.1) -> Optional[BipolarCell]:
+        """
+        Find bipolar cell closest to given position.
+        
+        Args:
+            eye: 'left' or 'right'
+            x, y: Spatial position in [-1, 1] range
+            cell_type: 'ON', 'OFF', or None (search all)
+            max_distance: Maximum distance to consider
+        
+        Returns:
+            Closest BipolarCell or None
+        """
+        closest = None
+        min_dist = max_distance
+        
+        types_to_search = [cell_type] if cell_type else ['ON', 'OFF']
+        
+        for ct in types_to_search:
+            for cell in self.bipolar_cells[eye][ct]:
+                bx, by = cell.position
+                dist = np.sqrt((x - bx)**2 + (y - by)**2)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest = cell
+        
+        return closest
+    
+    def get_receptive_field_info(self, cell: BipolarCell) -> Dict:
+        """
+        Get receptive field information for a bipolar cell.
+        
+        Returns:
+            Dict with positions of center and surround photoreceptors
+        """
+        center_positions = [(r.position[0], r.position[1]) for r in cell.center_photoreceptors]
+        surround_positions = [(r.position[0], r.position[1]) for r in cell.surround_photoreceptors]
+        
+        return {
+            'center_photoreceptors': center_positions,
+            'surround_photoreceptors': surround_positions,
+            'cell_position': cell.position,
+            'cell_type': cell.cell_type,
+            'pathway': cell.pathway
+        }
+    
+    def get_output_targets(self, cell: BipolarCell) -> List[Dict]:
+        """
+        Get output targets of a bipolar cell (which ganglion cells it connects to).
+        This searches ganglion cells for connections back to this bipolar.
+        Note: This requires access to ganglion layer, so we'll handle this in server.
+        """
+        # Return placeholder - will be filled by server that has access to ganglion layer
+        return []
 
