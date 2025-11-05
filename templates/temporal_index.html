@@ -620,6 +620,7 @@
             try {
                 await fetch('/api/shutdown', {method: 'POST'});
                 systemInitialized = false;
+                stopVisualizationLoop(); // Stop polling when shutting down
                 document.getElementById('systemStatus').textContent = 'Offline';
                 document.getElementById('systemStatus').classList.remove('active');
                 document.getElementById('fpsIndicator').style.display = 'none';
@@ -641,6 +642,13 @@
             try {
                 const response = await fetch('/api/state/current');
                 if (!response.ok) {
+                    // If system not initialized, just return silently
+                    if (response.status === 400) {
+                        const errorData = await response.json().catch(() => ({}));
+                        if (errorData.error === 'System not initialized') {
+                            return; // Expected error, don't log
+                        }
+                    }
                     console.error('API error:', response.status, response.statusText);
                     return;
                 }
@@ -648,6 +656,10 @@
                 const data = await response.json();
                 
                 if (data.status !== 'success') {
+                    // Handle expected errors gracefully
+                    if (data.error === 'System not initialized') {
+                        return; // Expected error, don't log
+                    }
                     console.error('API returned non-success:', data);
                     return;
                 }
@@ -751,11 +763,29 @@
             }
         }
 
+        let visualizationInterval = null;
+        let statsInterval = null;
+
         function startVisualizationLoop() {
+            // Stop any existing intervals first
+            if (visualizationInterval) clearInterval(visualizationInterval);
+            if (statsInterval) clearInterval(statsInterval);
+            
             // Update at 15 FPS for smooth display without overwhelming
-            setInterval(updateVisualizations, 1000 / 15);
+            visualizationInterval = setInterval(updateVisualizations, 1000 / 15);
             // Update network stats less frequently (every 2 seconds)
-            setInterval(updateNetworkStats, 2000);
+            statsInterval = setInterval(updateNetworkStats, 2000);
+        }
+
+        function stopVisualizationLoop() {
+            if (visualizationInterval) {
+                clearInterval(visualizationInterval);
+                visualizationInterval = null;
+            }
+            if (statsInterval) {
+                clearInterval(statsInterval);
+                statsInterval = null;
+            }
         }
 
         async function updateNetworkStats() {

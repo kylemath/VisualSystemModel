@@ -1,5 +1,6 @@
+✅ Using OPTIMIZED neural layers
 ======================================================================
-Bio-Inspired Temporal Neural Network Server
+Bio-Inspired Temporal Neural Network Server (OPTIMIZED)
 ======================================================================
 
 Complete Retinal System:
@@ -39,10 +40,10 @@ Note: Using port 5001 to avoid AirPlay Receiver on port 5000
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 163-862-773
-127.0.0.1 - - [31/Oct/2025 14:47:05] "GET / HTTP/1.1" 200 -
- * Detected change in '/Users/kylemathewson/Golem/foveal_retina.py', reloading
+ * Detected change in '/Users/kylemathewson/Golem/ganglion_cells_optimized.py', reloading
+✅ Using OPTIMIZED neural layers
 ======================================================================
-Bio-Inspired Temporal Neural Network Server
+Bio-Inspired Temporal Neural Network Server (OPTIMIZED)
 ======================================================================
 
 Complete Retinal System:
@@ -74,31 +75,17 @@ Starting server at http://localhost:5001
 Note: Using port 5001 to avoid AirPlay Receiver on port 5000
 ======================================================================
 
-Creating foveal retina (64x64)...
-Creating bipolar cell layer...
-Created 3888 bipolar cells
-Creating ganglion cell layer...
+
+======================================================================
+PERFORMANCE REPORT
+======================================================================
+Function                          Calls    Total(ms)     Mean(ms)
+----------------------------------------------------------------------
+======================================================================
+
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 163-862-773
-127.0.0.1 - - [31/Oct/2025 14:47:35] "POST /api/initialize HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:38] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:40] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:42] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:44] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:46] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:48] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:48] "[33mGET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1[0m" 404 -
-127.0.0.1 - - [31/Oct/2025 14:47:50] "GET /api/visualize/2d/network_overview HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:52] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:52] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
-127.0.0.1 - - [31/Oct/2025 14:47:53] "GET /api/state/current HTTP/1.1" 200 -
 /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
   warnings.warn('resource_tracker: There appear to be %d '
 /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown

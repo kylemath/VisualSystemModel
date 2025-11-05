@@ -296,10 +296,10 @@ class EyeMovementController:
             
             # Calculate bounding box
             half_fov = fov_size // 2
-            x1 = max(0, center_x - half_fov)
-            y1 = max(0, center_y - half_fov)
-            x2 = min(frame_width, center_x + half_fov)
-            y2 = min(frame_height, center_y + half_fov)
+            x1 = int(max(0, center_x - half_fov))
+            y1 = int(max(0, center_y - half_fov))
+            x2 = int(min(frame_width, center_x + half_fov))
+            y2 = int(min(frame_height, center_y + half_fov))
             
             regions[eye_name] = (x1, y1, x2, y2)
         
