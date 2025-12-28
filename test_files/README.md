@@ -17,7 +17,7 @@ Tests:
 
 Run:
 ```bash
-cd /Users/kylemathewson/Golem
+cd /Users/kylemathewson/VisualSystemModel
 source venv/bin/activate
 python test_files/test_temporal_system.py
 ```

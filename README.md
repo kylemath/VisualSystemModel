@@ -5,7 +5,7 @@ A modular, scalable neural network architecture based on the human brain's senso
 ## 🚀 Quick Start
 
 ```bash
-cd /Users/kylemathewson/Golem
+cd /Users/kylemathewson/VisualSystemModel
 source venv/bin/activate
 python temporal_server.py
 ```

@@ -96,7 +96,7 @@ Step-by-step instructions:
 
 ### Step 1: Run Baseline Benchmark
 ```bash
-cd /Users/kylemathewson/.cursor/worktrees/Golem/cLC1n
+cd /Users/kylemathewson/.cursor/worktrees/VisualSystemModel/cLC1n
 source venv/bin/activate
 python benchmark_performance.py
 ```

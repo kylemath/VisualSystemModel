@@ -35,7 +35,7 @@ The **Retinal Layer** is complete and functional. The server should already be r
 ### 1. Start the Server (if not running)
 
 ```bash
-cd /Users/kylemathewson/Golem
+cd /Users/kylemathewson/VisualSystemModel
 source venv/bin/activate
 python server.py
 ```
@@ -185,7 +185,7 @@ Future:
 ## File Structure
 
 ```
-Golem/
+VisualSystemModel/
 ├── neuron.py              # Base neuron classes
 ├── retina.py              # Retinal layer implementation
 ├── server.py              # Flask API server

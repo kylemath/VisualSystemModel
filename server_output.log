@@ -40,7 +40,7 @@ Note: Using port 5001 to avoid AirPlay Receiver on port 5000
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 163-862-773
- * Detected change in '/Users/kylemathewson/Golem/ganglion_cells_optimized.py', reloading
+ * Detected change in '/Users/kylemathewson/VisualSystemModel/ganglion_cells_optimized.py', reloading
 ✅ Using OPTIMIZED neural layers
 ======================================================================
 Bio-Inspired Temporal Neural Network Server (OPTIMIZED)

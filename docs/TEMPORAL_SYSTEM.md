@@ -134,7 +134,7 @@ Your neural network system now includes:
 ### Start the Temporal Server
 
 ```bash
-cd /Users/kylemathewson/Golem
+cd /Users/kylemathewson/VisualSystemModel
 source venv/bin/activate
 python temporal_server.py
 ```

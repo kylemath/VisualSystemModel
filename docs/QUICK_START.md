@@ -15,7 +15,7 @@ Your neural system feels slow because:
 
 ### Step 1: Benchmark Current Performance (1 minute)
 ```bash
-cd /Users/kylemathewson/.cursor/worktrees/Golem/cLC1n
+cd /Users/kylemathewson/.cursor/worktrees/VisualSystemModel/cLC1n
 source venv/bin/activate
 python benchmark_performance.py
 ```

@@ -4,7 +4,7 @@
 
 ### 1. Install Dependencies
 ```bash
-cd /Users/kylemathewson/.cursor/worktrees/Golem/cLC1n
+cd /Users/kylemathewson/.cursor/worktrees/VisualSystemModel/cLC1n
 source venv/bin/activate
 
 # Already installed: numpy, scipy, flask, etc.

@@ -7,7 +7,7 @@ You now have a complete, working bio-inspired neural network with temporal dynam
 ## Quick Start (30 seconds)
 
 ```bash
-cd /Users/kylemathewson/Golem
+cd /Users/kylemathewson/VisualSystemModel
 source venv/bin/activate
 python temporal_server.py
 ```

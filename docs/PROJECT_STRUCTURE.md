@@ -7,7 +7,7 @@ All markdown documentation files have been moved to the `docs/` folder and organ
 ## 📁 New Structure
 
 ```
-Golem/
+VisualSystemModel/
 ├── README.md                       # Main project homepage
 │
 ├── Core System (Current/Active)    # ⭐ Only production code here
@@ -53,7 +53,7 @@ Golem/
 ### Option 1: HTML Interface (Recommended)
 Open in your browser:
 ```
-file:///Users/kylemathewson/Golem/docs/index.html
+file:///Users/kylemathewson/VisualSystemModel/docs/index.html
 ```
 
 Or simply double-click `docs/index.html` in Finder!

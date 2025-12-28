@@ -160,7 +160,7 @@ python test_optimizations.py
 
 ### Step 1: Test Optimizations
 ```bash
-cd /Users/kylemathewson/.cursor/worktrees/Golem/cLC1n
+cd /Users/kylemathewson/.cursor/worktrees/VisualSystemModel/cLC1n
 source venv/bin/activate
 python test_optimizations.py
 ```
