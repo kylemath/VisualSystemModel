@@ -1,0 +1,11 @@
+{
+  "id": "VisualSystemModel",
+  "title": "VisualSystemModel",
+  "oneLiner": "A webbased connectionist model of the early visual system with webcam input",
+  "demoUrl": "https://github.com/kylemath/VisualSystemModel",
+  "screenshot": "https://raw.githubusercontent.com/kylemath/VisualSystemModel/main/screenshot.png",
+  "kind": "project",
+  "categories": ["brain", "vision", "web", "simulation"],
+  "tags": ["brain", "vision", "web", "simulation"],
+  "status": "published"
+}

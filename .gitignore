@@ -1,1 +1,4 @@
 venv/
+
+# Files added by git-init-repo script
+.cursor/worktrees.json
