@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retinal Cell Ring Visualization - Full Scale</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a12;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 18, 0.9);
+            border: 1px solid rgba(100, 100, 140, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            color: #e0e0f0;
+            max-width: 380px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #info-panel h2 {
+            color: #a0a0ff;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .layer-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .layer-item:hover {
+            background: rgba(100, 100, 140, 0.2);
+        }
+        
+        .color-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 12px;
+            box-shadow: 0 0 8px currentColor;
+        }
+        
+        .layer-name {
+            font-weight: bold;
+            min-width: 100px;
+        }
+        
+        .layer-stats {
+            color: #888;
+            font-size: 0.8em;
+        }
+        
+        .ring-label {
+            color: #666;
+            font-size: 0.7em;
+            margin-top: 4px;
+            padding-left: 28px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        #title {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #444;
+            font-size: 0.75em;
+            text-align: right;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 10, 18, 0.9);
+            border: 1px solid rgba(100, 100, 140, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            color: #888;
+            font-size: 0.8em;
+        }
+        
+        #stats h3 {
+            color: #a0a0ff;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="info-panel">
+        <h2>Retinal Cell Layers</h2>
+        <div id="legend"></div>
+    </div>
+    
+    <div id="stats">
+        <h3>STATISTICS</h3>
+        <div id="stats-content"></div>
+    </div>
+    
+    <div id="controls">
+        Drag to rotate • Scroll to zoom • Right-drag to pan
+    </div>
+    
+    <div id="title">
+        Visual System Model<br>
+        Full-Scale Ring Visualization
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ============================================
+        // CONFIGURATION - Full Cell Counts
+        // ============================================
+        
+        const CELL_DATA = {
+            'Rods':            { count: 120_000_000, color: 0x7a5c3e },  // Deep brown
+            'Cones':           { count: 6_000_000,   color: 0xff6b6b },  // Bright coral
+            'Rod Bipolar':     { count: 7_000_000,   color: 0x8b6914, segments: 47 },  // Brownish-gold
+            'Cone Bipolar ON': { count: 8_000_000,   color: 0x22c55e, segments: 53 },  // Green
+            'Cone Bipolar OFF': { count: 10_000_000, color: 0xef4444, segments: 67 },  // Red
+            'RGCs':            { count: 1_500_000,   color: 0xfbbf24 }   // Gold
+        };
+
+        // Ring definitions - Photoreceptors share a ring (Cones clustered)
+        const RING_DEFINITIONS = [
+            { 
+                name: 'Photoreceptors',
+                cellTypes: ['Rods', 'Cones'],
+                clustered: true,  // Cones will be in one contiguous section
+                order: 0
+            },
+            { 
+                name: 'Bipolar',
+                cellTypes: ['Rod Bipolar', 'Cone Bipolar ON', 'Cone Bipolar OFF'],
+                clustered: true,  // Clustered: Rod Bipolar peripheral, Cone Bipolars near cones
+                order: 1
+            },
+            { 
+                name: 'RGCs',
+                cellTypes: ['RGCs'],
+                order: 2
+            }
+        ];
+
+        // Visualization parameters
+        const CONFIG = {
+            cellsPerSegment: 100_000,  // Each segment = 100K cells (not used for bipolar subtypes)
+            ringWidth: 4,              // Thickness of each ring
+            ringGap: 8,                // Consistent gap between all rings
+            segmentGapRatio: 0.05,     // Gap between segments (5%)
+            arcLengthPerSegment: 0.5,  // Arc length per segment for radius calc
+            minSegments: 20,           // Minimum segments per cell type
+            innerPadding: 30,          // Minimum inner radius
+            connectionOpacity: 0.3,   // Opacity for connection lines
+            connectionHeight: 1        // Height offset for connection lines
+        };
+
+        // ============================================
+        // RING SYSTEM
+        // ============================================
+
+        class RetinalRingSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.ringData = [];
+                this.totalSegments = 0;
+                this.segmentPositions = new Map(); // Store positions for connections
+                this.coneRegion = { start: 0, end: 0 }; // Track where cones are located
+                this.bipolarRotationOffset = 0; // Rotation offset for bipolar ring
+            }
+
+            calculateRings() {
+                const rings = [];
+                
+                // First pass: calculate segments for each ring
+                RING_DEFINITIONS.forEach((ringDef, ringIndex) => {
+                    const cellTypesData = ringDef.cellTypes.map(typeName => {
+                        const data = CELL_DATA[typeName];
+                        // Use predefined segments if available, otherwise calculate
+                        const segments = data.segments || Math.max(
+                            CONFIG.minSegments,
+                            Math.round(data.count / CONFIG.cellsPerSegment)
+                        );
+                        return {
+                            name: typeName,
+                            count: data.count,
+                            color: data.color,
+                            segments
+                        };
+                    });
+                    
+                    const totalSegments = cellTypesData.reduce((sum, ct) => sum + ct.segments, 0);
+                    this.totalSegments += totalSegments;
+                    
+                    rings.push({
+                        name: ringDef.name,
+                        order: ringDef.order,
+                        cellTypes: cellTypesData,
+                        totalSegments,
+                        clustered: ringDef.clustered || false,
+                        ringWidth: CONFIG.ringWidth
+                    });
+                });
+                
+                // Find the ring with most segments (will be outermost)
+                const maxSegments = Math.max(...rings.map(r => r.totalSegments));
+                const outerRadius = (maxSegments * CONFIG.arcLengthPerSegment) / (2 * Math.PI);
+                
+                // Sort by order (0 = outer, higher = inner)
+                rings.sort((a, b) => a.order - b.order);
+                
+                // Assign radii with consistent spacing
+                rings.forEach((ring, index) => {
+                    ring.radius = outerRadius - index * (CONFIG.ringWidth + CONFIG.ringGap);
+                    ring.innerRadius = ring.radius - CONFIG.ringWidth / 2;
+                    ring.outerRadius = ring.radius + CONFIG.ringWidth / 2;
+                });
+                
+                this.ringData = rings;
+                return rings;
+            }
+
+            createSegmentGeometry(innerRadius, outerRadius, startAngle, endAngle, divisions = 12) {
+                const shape = new THREE.Shape();
+                
+                shape.moveTo(
+                    Math.cos(startAngle) * innerRadius,
+                    Math.sin(startAngle) * innerRadius
+                );
+                
+                for (let i = 1; i <= divisions; i++) {
+                    const t = startAngle + (i / divisions) * (endAngle - startAngle);
+                    shape.lineTo(
+                        Math.cos(t) * innerRadius,
+                        Math.sin(t) * innerRadius
+                    );
+                }
+                
+                shape.lineTo(
+                    Math.cos(endAngle) * outerRadius,
+                    Math.sin(endAngle) * outerRadius
+                );
+                
+                for (let i = divisions - 1; i >= 0; i--) {
+                    const t = startAngle + (i / divisions) * (endAngle - startAngle);
+                    shape.lineTo(
+                        Math.cos(t) * outerRadius,
+                        Math.sin(t) * outerRadius
+                    );
+                }
+                
+                shape.closePath();
+                return new THREE.ShapeGeometry(shape);
+            }
+
+            createRing(ring) {
+                const group = new THREE.Group();
+                group.name = ring.name;
+                
+                const { totalSegments, innerRadius, outerRadius, cellTypes, clustered, radius } = ring;
+                const segmentAngle = (2 * Math.PI) / totalSegments;
+                const gapAngle = segmentAngle * CONFIG.segmentGapRatio;
+                const actualSegmentAngle = segmentAngle - gapAngle;
+                
+                // Cone bipolars are 1/10 as wide
+                const coneBipolarWidthFactor = 0.1;
+                const coneBipolarSegmentAngle = actualSegmentAngle * coneBipolarWidthFactor;
+                const coneBipolarGapAngle = actualSegmentAngle - coneBipolarSegmentAngle;
+                
+                // Create materials for each cell type
+                const materials = {};
+                cellTypes.forEach(ct => {
+                    materials[ct.name] = new THREE.MeshBasicMaterial({
+                        color: ct.color,
+                        side: THREE.DoubleSide
+                    });
+                });
+                
+                // Initialize position arrays for this ring
+                cellTypes.forEach(ct => {
+                    if (!this.segmentPositions.has(ct.name)) {
+                        this.segmentPositions.set(ct.name, []);
+                    }
+                });
+                
+                if (cellTypes.length === 1) {
+                    // Single cell type ring (RGCs)
+                    const ct = cellTypes[0];
+                    for (let i = 0; i < ct.segments; i++) {
+                        const startAngle = i * segmentAngle + gapAngle / 2;
+                        const endAngle = startAngle + actualSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[ct.name]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: ct.name, index: i };
+                        group.add(mesh);
+                        
+                        // Store position for connections
+                        this.segmentPositions.get(ct.name).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: ct.name,
+                            index: i
+                        });
+                    }
+                } else if (clustered && ring.name === 'Photoreceptors') {
+                    // Photoreceptor ring: Rods first, then Cones clustered
+                    let segmentIndex = 0;
+                    const rods = cellTypes.find(ct => ct.name === 'Rods');
+                    const cones = cellTypes.find(ct => ct.name === 'Cones');
+                    
+                    // Calculate rotation offset - shift by half the cone region width
+                    const coneRegionWidth = cones.segments * segmentAngle;
+                    const photoreceptorRotation = coneRegionWidth / 2;
+                    
+                    // Rods in peripheral region
+                    for (let i = 0; i < rods.segments; i++) {
+                        const baseAngle = segmentIndex * segmentAngle;
+                        const startAngle = baseAngle + photoreceptorRotation + gapAngle / 2;
+                        const endAngle = startAngle + actualSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[rods.name]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: rods.name, index: i };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(rods.name).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: rods.name,
+                            index: i
+                        });
+                        
+                        segmentIndex++;
+                    }
+                    
+                    // Track cone region
+                    this.coneRegion.start = segmentIndex;
+                    this.coneRegion.end = segmentIndex + cones.segments;
+                    this.coneRegion.totalSegments = totalSegments;
+                    
+                    // Calculate cone region center angle for bipolar alignment (after rotation)
+                    const coneCenterIndex = (this.coneRegion.start + this.coneRegion.end) / 2;
+                    this.coneRegion.centerAngle = (coneCenterIndex / totalSegments) * 2 * Math.PI + photoreceptorRotation;
+                    
+                    // Cones clustered at end
+                    for (let i = 0; i < cones.segments; i++) {
+                        const baseAngle = segmentIndex * segmentAngle;
+                        const startAngle = baseAngle + photoreceptorRotation + gapAngle / 2;
+                        const endAngle = startAngle + actualSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[cones.name]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: cones.name, index: i };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(cones.name).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: cones.name,
+                            index: i
+                        });
+                        
+                        segmentIndex++;
+                    }
+                } else if (clustered && ring.name === 'Bipolar') {
+                    // Bipolar ring layout:
+                    // Rod Bipolars (peripheral) -> OFF flanking -> ON/OFF alternating -> OFF flanking
+                    const rodBipolar = cellTypes.find(ct => ct.name === 'Rod Bipolar');
+                    const coneBipolarON = cellTypes.find(ct => ct.name === 'Cone Bipolar ON');
+                    const coneBipolarOFF = cellTypes.find(ct => ct.name === 'Cone Bipolar OFF');
+                    
+                    // Distribute OFF bipolars: some flank the alternating region
+                    const alternatingCount = coneBipolarON.segments + Math.floor(coneBipolarOFF.segments / 2);
+                    const offFlankLeft = Math.floor((coneBipolarOFF.segments - Math.floor(coneBipolarOFF.segments / 2)) / 2);
+                    const offFlankRight = coneBipolarOFF.segments - Math.floor(coneBipolarOFF.segments / 2) - offFlankLeft;
+                    const offInAlternating = Math.floor(coneBipolarOFF.segments / 2);
+                    
+                    // Calculate rotation offset to align cone bipolars with cone region
+                    const coneBipolarStartIndex = rodBipolar.segments + offFlankLeft;
+                    const coneBipolarCount = offFlankLeft + coneBipolarON.segments + offInAlternating + offFlankRight;
+                    const coneBipolarCenterIndex = rodBipolar.segments + coneBipolarCount / 2;
+                    const coneBipolarCenterAngle = (coneBipolarCenterIndex / totalSegments) * 2 * Math.PI;
+                    
+                    // Rotation offset to align bipolar cones with photoreceptor cones
+                    this.bipolarRotationOffset = this.coneRegion.centerAngle - coneBipolarCenterAngle;
+                    
+                    let segmentIndex = 0;
+                    
+                    // Rod Bipolar in peripheral (where rods are)
+                    for (let i = 0; i < rodBipolar.segments; i++) {
+                        const baseAngle = segmentIndex * segmentAngle;
+                        const startAngle = baseAngle + this.bipolarRotationOffset + gapAngle / 2;
+                        const endAngle = startAngle + actualSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[rodBipolar.name]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: rodBipolar.name, index: i };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(rodBipolar.name).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: rodBipolar.name,
+                            index: i
+                        });
+                        
+                        segmentIndex++;
+                    }
+                    
+                    // Left flank: Cone Bipolar OFF (narrower)
+                    let offPlaced = 0;
+                    for (let i = 0; i < offFlankLeft; i++) {
+                        const baseAngle = segmentIndex * segmentAngle;
+                        const startAngle = baseAngle + this.bipolarRotationOffset + coneBipolarGapAngle / 2;
+                        const endAngle = startAngle + coneBipolarSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[coneBipolarOFF.name]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: coneBipolarOFF.name, index: offPlaced };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(coneBipolarOFF.name).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: coneBipolarOFF.name,
+                            index: offPlaced
+                        });
+                        
+                        offPlaced++;
+                        segmentIndex++;
+                    }
+                    
+                    // Center: Alternating ON and OFF
+                    let onPlaced = 0;
+                    const alternatingTotal = coneBipolarON.segments + offInAlternating;
+                    
+                    for (let i = 0; i < alternatingTotal; i++) {
+                        const baseAngle = segmentIndex * segmentAngle;
+                        const startAngle = baseAngle + this.bipolarRotationOffset + coneBipolarGapAngle / 2;
+                        const endAngle = startAngle + coneBipolarSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        // Alternate ON and OFF
+                        let cellType;
+                        let index;
+                        if (onPlaced >= coneBipolarON.segments) {
+                            // Only OFF left in alternating
+                            cellType = coneBipolarOFF.name;
+                            index = offPlaced;
+                            offPlaced++;
+                        } else if (offPlaced - offFlankLeft >= offInAlternating) {
+                            // Only ON left in alternating
+                            cellType = coneBipolarON.name;
+                            index = onPlaced;
+                            onPlaced++;
+                        } else if (i % 2 === 0) {
+                            // Even: ON
+                            cellType = coneBipolarON.name;
+                            index = onPlaced;
+                            onPlaced++;
+                        } else {
+                            // Odd: OFF
+                            cellType = coneBipolarOFF.name;
+                            index = offPlaced;
+                            offPlaced++;
+                        }
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[cellType]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType, index };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(cellType).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType,
+                            index
+                        });
+                        
+                        segmentIndex++;
+                    }
+                    
+                    // Right flank: Cone Bipolar OFF (narrower)
+                    for (let i = 0; i < offFlankRight; i++) {
+                        const baseAngle = segmentIndex * segmentAngle;
+                        const startAngle = baseAngle + this.bipolarRotationOffset + coneBipolarGapAngle / 2;
+                        const endAngle = startAngle + coneBipolarSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[coneBipolarOFF.name]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: coneBipolarOFF.name, index: offPlaced };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(coneBipolarOFF.name).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: coneBipolarOFF.name,
+                            index: offPlaced
+                        });
+                        
+                        offPlaced++;
+                        segmentIndex++;
+                    }
+                } else {
+                    // Multiple cell types - interleaved
+                    const distributed = this.distributeProportionally(cellTypes);
+                    
+                    distributed.forEach((cellTypeName, i) => {
+                        const startAngle = i * segmentAngle + gapAngle / 2;
+                        const endAngle = startAngle + actualSegmentAngle;
+                        const midAngle = (startAngle + endAngle) / 2;
+                        
+                        const geometry = this.createSegmentGeometry(
+                            innerRadius, outerRadius, startAngle, endAngle
+                        );
+                        const mesh = new THREE.Mesh(geometry, materials[cellTypeName]);
+                        mesh.rotation.x = -Math.PI / 2;
+                        mesh.userData = { cellType: cellTypeName, index: i };
+                        group.add(mesh);
+                        
+                        this.segmentPositions.get(cellTypeName).push({
+                            x: Math.cos(midAngle) * radius,
+                            z: Math.sin(midAngle) * radius,
+                            angle: midAngle,
+                            cellType: cellTypeName,
+                            index: i
+                        });
+                    });
+                }
+                
+                return group;
+            }
+
+            distributeProportionally(cellTypes) {
+                const result = [];
+                const total = cellTypes.reduce((sum, ct) => sum + ct.segments, 0);
+                const placed = {};
+                cellTypes.forEach(ct => placed[ct.name] = 0);
+                
+                for (let i = 0; i < total; i++) {
+                    let bestType = null;
+                    let bestDeficit = -Infinity;
+                    
+                    cellTypes.forEach(ct => {
+                        const expectedPlaced = (i + 1) * (ct.segments / total);
+                        const deficit = expectedPlaced - placed[ct.name];
+                        if (deficit > bestDeficit && placed[ct.name] < ct.segments) {
+                            bestDeficit = deficit;
+                            bestType = ct.name;
+                        }
+                    });
+                    
+                    result.push(bestType);
+                    placed[bestType]++;
+                }
+                
+                return result;
+            }
+
+            createConnections() {
+                const connectionsGroup = new THREE.Group();
+                
+                const rods = this.segmentPositions.get('Rods') || [];
+                const cones = this.segmentPositions.get('Cones') || [];
+                const rodBipolars = this.segmentPositions.get('Rod Bipolar') || [];
+                const coneBipolarsON = this.segmentPositions.get('Cone Bipolar ON') || [];
+                const coneBipolarsOFF = this.segmentPositions.get('Cone Bipolar OFF') || [];
+                const allConeBipolars = [...coneBipolarsON, ...coneBipolarsOFF];
+                
+                // Find nearest segments by angular proximity
+                const findNearestByAngle = (source, targets, n) => {
+                    if (targets.length === 0) return [];
+                    
+                    const normalizeAngle = (angle) => {
+                        let norm = angle % (2 * Math.PI);
+                        if (norm < 0) norm += 2 * Math.PI;
+                        return norm;
+                    };
+                    
+                    const sourceAngle = normalizeAngle(source.angle);
+                    
+                    return targets
+                        .map(t => {
+                            const targetAngle = normalizeAngle(t.angle);
+                            let angDist = Math.abs(targetAngle - sourceAngle);
+                            if (angDist > Math.PI) angDist = 2 * Math.PI - angDist;
+                            return { target: t, dist: angDist };
+                        })
+                        .sort((a, b) => a.dist - b.dist)
+                        .slice(0, Math.min(n, targets.length))
+                        .map(item => item.target);
+                };
+                
+                // Create materials
+                const rodBipolarMaterial = new THREE.LineBasicMaterial({
+                    color: CELL_DATA['Rod Bipolar'].color,
+                    transparent: true,
+                    opacity: CONFIG.connectionOpacity
+                });
+                
+                const coneBipolarONMaterial = new THREE.LineBasicMaterial({
+                    color: CELL_DATA['Cone Bipolar ON'].color,
+                    transparent: true,
+                    opacity: CONFIG.connectionOpacity
+                });
+                
+                const coneBipolarOFFMaterial = new THREE.LineBasicMaterial({
+                    color: CELL_DATA['Cone Bipolar OFF'].color,
+                    transparent: true,
+                    opacity: CONFIG.connectionOpacity
+                });
+                
+                // Calculate proper convergence ratios
+                // Rod convergence: 1200 rods / 47 rod bipolars ≈ 25.5 rods per bipolar
+                const rodsPerBipolar = Math.ceil(rods.length / rodBipolars.length);
+                
+                // Cone convergence: 60 cones / 53 ON + 67 OFF ≈ 0.5 cones per bipolar
+                // So each cone connects to multiple bipolars
+                const coneBipolarsPerCone = 3; // Each cone connects to ~3 bipolars
+                
+                // Track which connections we've already drawn to avoid duplicates
+                const drawnConnections = new Set();
+                
+                // Rods → Rod Bipolar: Each bipolar connects to its nearest rods
+                rodBipolars.forEach(bp => {
+                    const nearestRods = findNearestByAngle(bp, rods, rodsPerBipolar);
+                    nearestRods.forEach(rod => {
+                        const key = `rod-${rod.index}-rbp-${bp.index}`;
+                        if (!drawnConnections.has(key)) {
+                            drawnConnections.add(key);
+                            const points = [
+                                new THREE.Vector3(rod.x, CONFIG.connectionHeight, rod.z),
+                                new THREE.Vector3(bp.x, CONFIG.connectionHeight, bp.z)
+                            ];
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geometry, rodBipolarMaterial);
+                            connectionsGroup.add(line);
+                        }
+                    });
+                });
+                
+                // Cones → Cone Bipolars: Each cone connects to nearby bipolars
+                // With fewer bipolars, each cone needs to connect to more to ensure all bipolars get connections
+                const conesPerOnBipolar = Math.ceil(cones.length / coneBipolarsON.length);
+                const conesPerOffBipolar = Math.ceil(cones.length / coneBipolarsOFF.length);
+                
+                cones.forEach(cone => {
+                    // Connect to nearest Cone Bipolar ON cells (more connections per cone now)
+                    const nearestONs = findNearestByAngle(cone, coneBipolarsON, Math.min(2, coneBipolarsON.length));
+                    nearestONs.forEach(bp => {
+                        const key = `cone-${cone.index}-cbon-${bp.index}`;
+                        if (!drawnConnections.has(key)) {
+                            drawnConnections.add(key);
+                            const points = [
+                                new THREE.Vector3(cone.x, CONFIG.connectionHeight, cone.z),
+                                new THREE.Vector3(bp.x, CONFIG.connectionHeight, bp.z)
+                            ];
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geometry, coneBipolarONMaterial);
+                            connectionsGroup.add(line);
+                        }
+                    });
+                    
+                    // Connect to nearest Cone Bipolar OFF cells
+                    const nearestOFFs = findNearestByAngle(cone, coneBipolarsOFF, Math.min(2, coneBipolarsOFF.length));
+                    nearestOFFs.forEach(bp => {
+                        const key = `cone-${cone.index}-cboff-${bp.index}`;
+                        if (!drawnConnections.has(key)) {
+                            drawnConnections.add(key);
+                            const points = [
+                                new THREE.Vector3(cone.x, CONFIG.connectionHeight, cone.z),
+                                new THREE.Vector3(bp.x, CONFIG.connectionHeight, bp.z)
+                            ];
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geometry, coneBipolarOFFMaterial);
+                            connectionsGroup.add(line);
+                        }
+                    });
+                });
+                
+                // Ensure all cone bipolars have at least one connection (reverse check)
+                coneBipolarsON.forEach(bp => {
+                    const nearestCones = findNearestByAngle(bp, cones, conesPerOnBipolar);
+                    nearestCones.forEach(cone => {
+                        const key = `cone-${cone.index}-cbon-${bp.index}`;
+                        if (!drawnConnections.has(key)) {
+                            drawnConnections.add(key);
+                            const points = [
+                                new THREE.Vector3(cone.x, CONFIG.connectionHeight, cone.z),
+                                new THREE.Vector3(bp.x, CONFIG.connectionHeight, bp.z)
+                            ];
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geometry, coneBipolarONMaterial);
+                            connectionsGroup.add(line);
+                        }
+                    });
+                });
+                
+                coneBipolarsOFF.forEach(bp => {
+                    const nearestCones = findNearestByAngle(bp, cones, conesPerOffBipolar);
+                    nearestCones.forEach(cone => {
+                        const key = `cone-${cone.index}-cboff-${bp.index}`;
+                        if (!drawnConnections.has(key)) {
+                            drawnConnections.add(key);
+                            const points = [
+                                new THREE.Vector3(cone.x, CONFIG.connectionHeight, cone.z),
+                                new THREE.Vector3(bp.x, CONFIG.connectionHeight, bp.z)
+                            ];
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geometry, coneBipolarOFFMaterial);
+                            connectionsGroup.add(line);
+                        }
+                    });
+                });
+                
+                return connectionsGroup;
+            }
+
+            build() {
+                const rings = this.calculateRings();
+                
+                rings.forEach(ring => {
+                    const ringGroup = this.createRing(ring);
+                    this.scene.add(ringGroup);
+                });
+                
+                // Add connections
+                const connections = this.createConnections();
+                this.scene.add(connections);
+                
+                return rings;
+            }
+        }
+
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+
+        class Visualization {
+            constructor() {
+                this.container = document.getElementById('container');
+                this.setupScene();
+                this.setupLighting();
+                this.setupControls();
+                this.createRings();
+                this.buildLegend();
+                this.buildStats();
+                this.animate();
+                
+                window.addEventListener('resize', () => this.onResize());
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0a12);
+                this.scene.fog = new THREE.Fog(0x0a0a12, 200, 600);
+                
+                this.camera = new THREE.PerspectiveCamera(
+                    50,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    2000
+                );
+                this.camera.position.set(0, 300, 200);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    alpha: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.container.appendChild(this.renderer.domElement);
+            }
+
+            setupLighting() {
+                const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+                this.scene.add(ambient);
+            }
+
+            setupControls() {
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.minDistance = 100;
+                this.controls.maxDistance = 800;
+            }
+
+            createRings() {
+                this.ringSystem = new RetinalRingSystem(this.scene);
+                this.rings = this.ringSystem.build();
+                
+                // Center marker
+                const centerGeometry = new THREE.CircleGeometry(5, 32);
+                const centerMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x333344,
+                    side: THREE.DoubleSide
+                });
+                const centerMarker = new THREE.Mesh(centerGeometry, centerMaterial);
+                centerMarker.rotation.x = -Math.PI / 2;
+                this.scene.add(centerMarker);
+                
+                // Grid
+                const maxRadius = Math.max(...this.rings.map(r => r.outerRadius));
+                const gridSize = Math.ceil(maxRadius * 2.5 / 100) * 100;
+                const gridHelper = new THREE.GridHelper(gridSize, 20, 0x1a1a2e, 0x1a1a2e);
+                gridHelper.position.y = -0.5;
+                this.scene.add(gridHelper);
+            }
+
+            buildLegend() {
+                const legendDiv = document.getElementById('legend');
+                
+                this.rings.forEach(ring => {
+                    ring.cellTypes.forEach((ct, idx) => {
+                        const colorHex = '#' + ct.color.toString(16).padStart(6, '0');
+                        const item = document.createElement('div');
+                        item.className = 'layer-item';
+                        item.innerHTML = `
+                            <div class="color-swatch" style="background: ${colorHex}; color: ${colorHex}"></div>
+                            <span class="layer-name">${ct.name}</span>
+                            <span class="layer-stats">${ct.segments.toLocaleString()} seg • ${(ct.count / 1_000_000).toFixed(1)}M</span>
+                        `;
+                        legendDiv.appendChild(item);
+                        
+                        if (idx === 0 && ring.cellTypes.length > 1) {
+                            const label = document.createElement('div');
+                            label.className = 'ring-label';
+                            label.textContent = `↳ clustered in same ring`;
+                            legendDiv.appendChild(label);
+                        }
+                    });
+                });
+            }
+
+            buildStats() {
+                const statsDiv = document.getElementById('stats-content');
+                const totalCells = Object.values(CELL_DATA).reduce((sum, d) => sum + d.count, 0);
+                const totalSegments = this.ringSystem.totalSegments;
+                const maxRadius = Math.max(...this.rings.map(r => r.outerRadius));
+                const minRadius = Math.min(...this.rings.map(r => r.innerRadius));
+                
+                statsDiv.innerHTML = `
+                    <div>Total cells: ${(totalCells / 1_000_000).toFixed(1)}M</div>
+                    <div>Total segments: ${totalSegments.toLocaleString()}</div>
+                    <div>Rings: ${this.rings.length}</div>
+                    <div>Ring gap: ${CONFIG.ringGap} (consistent)</div>
+                    <div>Outer radius: ${maxRadius.toFixed(1)}</div>
+                    <div>Inner radius: ${minRadius.toFixed(1)}</div>
+                `;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+
+        // Initialize
+        new Visualization();
+    </script>
+</body>
+</html>
