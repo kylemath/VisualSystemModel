@@ -158,19 +158,22 @@
         
         const CELL_DATA = {
             'Rods':            { count: 120_000_000, color: 0x7a5c3e },  // Deep brown
-            'Cones':           { count: 6_000_000,   color: 0xff6b6b },  // Bright coral
+            'S-Cones':         { count: 600_000,     color: 0x4a9eff },  // Blue (10% of cones)
+            'M-Cones':         { count: 2_700_000,   color: 0x22c55e },  // Green (45% of cones)
+            'L-Cones':         { count: 2_700_000,   color: 0xff6b6b },  // Red (45% of cones)
             'Rod Bipolar':     { count: 7_000_000,   color: 0x8b6914, segments: 47 },  // Brownish-gold
             'Cone Bipolar ON': { count: 8_000_000,   color: 0x22c55e, segments: 53 },  // Green
             'Cone Bipolar OFF': { count: 10_000_000, color: 0xef4444, segments: 67 },  // Red
             'RGCs':            { count: 1_500_000,   color: 0xfbbf24 }   // Gold
         };
 
-        // Ring definitions - Photoreceptors share a ring (Cones clustered)
+        // Ring definitions - Photoreceptors share a ring (Cones clustered with gradual transition)
         const RING_DEFINITIONS = [
             { 
                 name: 'Photoreceptors',
-                cellTypes: ['Rods', 'Cones'],
-                clustered: true,  // Cones will be in one contiguous section
+                cellTypes: ['Rods', 'S-Cones', 'M-Cones', 'L-Cones'],
+                clustered: true,  // Gradual transition from rods to cones
+                gradualTransition: true,  // Enable gradual mixing
                 order: 0
             },
             { 
@@ -353,74 +356,190 @@
                         });
                     }
                 } else if (clustered && ring.name === 'Photoreceptors') {
-                    // Photoreceptor ring: Rods first, then Cones clustered
-                    let segmentIndex = 0;
+                    // Photoreceptor ring:
+                    // - Deterministic (no Math.random), so it renders identically every load
+                    // - Symmetric around a center point
+                    // - Fovea center positioned at 180° (π) around the ring
+                    //
+                    // Implementation:
+                    // We place exactly `totalConeSegments` cone segments inside a wider "fovea window".
+                    // Within that window, cone-vs-rod is decided by a smooth density curve + ordered dithering,
+                    // enforcing symmetry by making decisions in +/- distance pairs.
+
                     const rods = cellTypes.find(ct => ct.name === 'Rods');
-                    const cones = cellTypes.find(ct => ct.name === 'Cones');
-                    
-                    // Calculate rotation offset - shift by half the cone region width
-                    const coneRegionWidth = cones.segments * segmentAngle;
-                    const photoreceptorRotation = coneRegionWidth / 2;
-                    
-                    // Rods in peripheral region
-                    for (let i = 0; i < rods.segments; i++) {
-                        const baseAngle = segmentIndex * segmentAngle;
-                        const startAngle = baseAngle + photoreceptorRotation + gapAngle / 2;
-                        const endAngle = startAngle + actualSegmentAngle;
-                        const midAngle = (startAngle + endAngle) / 2;
-                        
-                        const geometry = this.createSegmentGeometry(
-                            innerRadius, outerRadius, startAngle, endAngle
-                        );
-                        const mesh = new THREE.Mesh(geometry, materials[rods.name]);
-                        mesh.rotation.x = -Math.PI / 2;
-                        mesh.userData = { cellType: rods.name, index: i };
-                        group.add(mesh);
-                        
-                        this.segmentPositions.get(rods.name).push({
-                            x: Math.cos(midAngle) * radius,
-                            z: Math.sin(midAngle) * radius,
-                            angle: midAngle,
-                            cellType: rods.name,
-                            index: i
-                        });
-                        
-                        segmentIndex++;
-                    }
-                    
-                    // Track cone region
-                    this.coneRegion.start = segmentIndex;
-                    this.coneRegion.end = segmentIndex + cones.segments;
+                    const sCones = cellTypes.find(ct => ct.name === 'S-Cones');
+                    const mCones = cellTypes.find(ct => ct.name === 'M-Cones');
+                    const lCones = cellTypes.find(ct => ct.name === 'L-Cones');
+
+                    const totalConeSegments = sCones.segments + mCones.segments + lCones.segments;
+
+                    // Place fovea at angle π, but avoid splitting across the 0/2π seam
+                    const centerIndex = Math.floor(totalSegments / 2);
+                    const desiredCenterAngle = Math.PI;
+                    const rotationOffsetAngle = desiredCenterAngle - centerIndex * segmentAngle;
+
                     this.coneRegion.totalSegments = totalSegments;
-                    
-                    // Calculate cone region center angle for bipolar alignment (after rotation)
-                    const coneCenterIndex = (this.coneRegion.start + this.coneRegion.end) / 2;
-                    this.coneRegion.centerAngle = (coneCenterIndex / totalSegments) * 2 * Math.PI + photoreceptorRotation;
-                    
-                    // Cones clustered at end
-                    for (let i = 0; i < cones.segments; i++) {
-                        const baseAngle = segmentIndex * segmentAngle;
-                        const startAngle = baseAngle + photoreceptorRotation + gapAngle / 2;
+                    this.coneRegion.centerAngle = desiredCenterAngle;
+
+                    // Choose a window around the fovea center that's bigger than the cone count so we get a gradient.
+                    // (If this is too small, cones become a hard block; too big, cones get too sparse.)
+                    const halfWindow = Math.min(
+                        Math.floor(totalSegments / 2) - 2,
+                        Math.max(120, totalConeSegments * 3)
+                    );
+                    const sigma = halfWindow / 3; // controls steepness of falloff
+
+                    // Deterministic helper: fractional part
+                    const fract = (x) => x - Math.floor(x);
+
+                    // Density curve (Gaussian-ish)
+                    const densityAt = (d) => Math.exp(-0.5 * (d / sigma) * (d / sigma));
+
+                    // Ordered dithering threshold by distance (symmetric by construction)
+                    const thresholdAt = (d) => fract(d * 0.6180339887498949); // golden ratio fractional part
+
+                    // We decide cone/rod per distance pair (center±d). Since totalConeSegments is even here,
+                    // we keep symmetry by never allocating the center (d=0) as a lone cone.
+                    const targetDistances = totalConeSegments / 2;
+
+                    // Binary search a scale factor so we select exactly `targetDistances` distances as cones
+                    const countSelectedForScale = (scale) => {
+                        let selected = 0;
+                        for (let d = 1; d <= halfWindow; d++) {
+                            const p = densityAt(d) * scale;
+                            if (p > thresholdAt(d)) selected++;
+                        }
+                        return selected;
+                    };
+
+                    let lo = 0;
+                    let hi = 10;
+                    for (let iter = 0; iter < 40; iter++) {
+                        const mid = (lo + hi) / 2;
+                        const c = countSelectedForScale(mid);
+                        if (c >= targetDistances) hi = mid;
+                        else lo = mid;
+                    }
+                    const scale = hi;
+
+                    // Build the cone index set (symmetric pairs around centerIndex)
+                    const coneIndexSet = new Set();
+                    const selectedDistances = [];
+                    for (let d = 1; d <= halfWindow; d++) {
+                        const p = densityAt(d) * scale;
+                        if (p > thresholdAt(d)) selectedDistances.push(d);
+                    }
+
+                    // If we overshot due to threshold ties, trim deterministically from the far end
+                    selectedDistances.sort((a, b) => a - b);
+                    while (selectedDistances.length > targetDistances) selectedDistances.pop();
+
+                    selectedDistances.forEach(d => {
+                        const a = (centerIndex + d) % totalSegments;
+                        const b = (centerIndex - d + totalSegments) % totalSegments;
+                        coneIndexSet.add(a);
+                        coneIndexSet.add(b);
+                    });
+
+                    // Track cone region bounds (mostly for debugging / future UI)
+                    const coneIndicesSorted = Array.from(coneIndexSet).sort((a, b) => a - b);
+                    this.coneRegion.start = coneIndicesSorted.length ? coneIndicesSorted[0] : 0;
+                    this.coneRegion.end = coneIndicesSorted.length ? (coneIndicesSorted[coneIndicesSorted.length - 1] + 1) : 0;
+
+                    // Assign cone subtypes deterministically across the cone indices
+                    // Goal: S sparse, M/L interleaved
+                    const coneSubtypeBySegmentIndex = new Map();
+                    let sRemaining = sCones.segments;
+                    let mRemaining = mCones.segments;
+                    let lRemaining = lCones.segments;
+                    let mlToggle = true; // true -> M, false -> L
+
+                    // Iterate in angular order for a more even “mosaic”
+                    for (let k = 0; k < coneIndicesSorted.length; k++) {
+                        const segIdx = coneIndicesSorted[k];
+
+                        // Roughly every 10th cone gets S, if any remain
+                        const wantsS = (k % 10 === 0);
+                        if (wantsS && sRemaining > 0) {
+                            coneSubtypeBySegmentIndex.set(segIdx, 'S-Cones');
+                            sRemaining--;
+                            continue;
+                        }
+
+                        // Otherwise alternate M/L, respecting remaining counts
+                        if (mlToggle && mRemaining > 0) {
+                            coneSubtypeBySegmentIndex.set(segIdx, 'M-Cones');
+                            mRemaining--;
+                            mlToggle = !mlToggle;
+                        } else if (!mlToggle && lRemaining > 0) {
+                            coneSubtypeBySegmentIndex.set(segIdx, 'L-Cones');
+                            lRemaining--;
+                            mlToggle = !mlToggle;
+                        } else if (mRemaining > 0) {
+                            coneSubtypeBySegmentIndex.set(segIdx, 'M-Cones');
+                            mRemaining--;
+                        } else if (lRemaining > 0) {
+                            coneSubtypeBySegmentIndex.set(segIdx, 'L-Cones');
+                            lRemaining--;
+                        } else if (sRemaining > 0) {
+                            coneSubtypeBySegmentIndex.set(segIdx, 'S-Cones');
+                            sRemaining--;
+                        } else {
+                            // Fallback (shouldn't happen): treat as rod
+                            coneSubtypeBySegmentIndex.set(segIdx, 'Rods');
+                        }
+                    }
+
+                    // Now render segments in index order, with exact rod/cone segment counts preserved
+                    let rodIndex = 0;
+                    let sIndex = 0;
+                    let mIndex = 0;
+                    let lIndex = 0;
+
+                    for (let i = 0; i < totalSegments; i++) {
+                        const baseAngle = i * segmentAngle;
+                        const startAngle = baseAngle + rotationOffsetAngle + gapAngle / 2;
                         const endAngle = startAngle + actualSegmentAngle;
                         const midAngle = (startAngle + endAngle) / 2;
-                        
+
+                        let cellTypeName = 'Rods';
+                        let localIndex = rodIndex;
+
+                        if (coneIndexSet.has(i)) {
+                            const subtype = coneSubtypeBySegmentIndex.get(i) || 'M-Cones';
+                            if (subtype === 'S-Cones') {
+                                cellTypeName = 'S-Cones';
+                                localIndex = sIndex++;
+                            } else if (subtype === 'M-Cones') {
+                                cellTypeName = 'M-Cones';
+                                localIndex = mIndex++;
+                            } else if (subtype === 'L-Cones') {
+                                cellTypeName = 'L-Cones';
+                                localIndex = lIndex++;
+                            } else {
+                                cellTypeName = 'Rods';
+                                localIndex = rodIndex++;
+                            }
+                        } else {
+                            cellTypeName = 'Rods';
+                            localIndex = rodIndex++;
+                        }
+
                         const geometry = this.createSegmentGeometry(
                             innerRadius, outerRadius, startAngle, endAngle
                         );
-                        const mesh = new THREE.Mesh(geometry, materials[cones.name]);
+                        const mesh = new THREE.Mesh(geometry, materials[cellTypeName]);
                         mesh.rotation.x = -Math.PI / 2;
-                        mesh.userData = { cellType: cones.name, index: i };
+                        mesh.userData = { cellType: cellTypeName, index: localIndex };
                         group.add(mesh);
-                        
-                        this.segmentPositions.get(cones.name).push({
+
+                        this.segmentPositions.get(cellTypeName).push({
                             x: Math.cos(midAngle) * radius,
                             z: Math.sin(midAngle) * radius,
                             angle: midAngle,
-                            cellType: cones.name,
-                            index: i
+                            cellType: cellTypeName,
+                            index: localIndex
                         });
-                        
-                        segmentIndex++;
                     }
                 } else if (clustered && ring.name === 'Bipolar') {
                     // Bipolar ring layout:
@@ -640,7 +759,10 @@
                 const connectionsGroup = new THREE.Group();
                 
                 const rods = this.segmentPositions.get('Rods') || [];
-                const cones = this.segmentPositions.get('Cones') || [];
+                const sCones = this.segmentPositions.get('S-Cones') || [];
+                const mCones = this.segmentPositions.get('M-Cones') || [];
+                const lCones = this.segmentPositions.get('L-Cones') || [];
+                const cones = [...sCones, ...mCones, ...lCones];  // Combine all cone types
                 const rodBipolars = this.segmentPositions.get('Rod Bipolar') || [];
                 const coneBipolarsON = this.segmentPositions.get('Cone Bipolar ON') || [];
                 const coneBipolarsOFF = this.segmentPositions.get('Cone Bipolar OFF') || [];
